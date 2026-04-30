@@ -1,4 +1,5 @@
 import { Breakdown } from "@/components/month/breakdown";
+import { ClosingPanel } from "@/components/month/closing-panel";
 import { EntriesList } from "@/components/month/entries-list";
 import { FlowChart } from "@/components/month/flow-chart";
 import { PageHead } from "@/components/month/page-head";
@@ -16,6 +17,7 @@ export default async function MonthPage({ params }: { params: Promise<{ month: s
       <FlowChart month={month} />
       <EntriesList month={month} />
       <Breakdown month={month} />
+      <ClosingPanel month={month} />
     </main>
   );
 }
