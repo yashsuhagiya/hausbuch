@@ -1,0 +1,44 @@
+"use client";
+import { useState } from "react";
+import { EntrySheet } from "@/components/entry-sheet/sheet";
+import { Breakdown } from "@/components/month/breakdown";
+import { ClosingPanel } from "@/components/month/closing-panel";
+import { EntriesList } from "@/components/month/entries-list";
+import { Fab } from "@/components/month/fab";
+import { FlowChart } from "@/components/month/flow-chart";
+import { PageHead } from "@/components/month/page-head";
+import { StatsStrip } from "@/components/month/stats-strip";
+import { currentMonth, todayISO } from "@/lib/date";
+import type { Entry, ISODate, ISOMonth } from "@/lib/types";
+
+function defaultDateFor(month: ISOMonth): ISODate {
+  return month === currentMonth() ? todayISO() : `${month}-01`;
+}
+
+export function MonthPageShell({ month }: { month: ISOMonth }) {
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Entry | undefined>(undefined);
+
+  const openNew = () => {
+    setEditing(undefined);
+    setOpen(true);
+  };
+  const openEdit = (e: Entry) => {
+    setEditing(e);
+    setOpen(true);
+  };
+  const close = () => setOpen(false);
+
+  return (
+    <main className="max-w-[1320px] mx-auto px-8 py-12">
+      <PageHead month={month} />
+      <StatsStrip month={month} />
+      <FlowChart month={month} />
+      <EntriesList month={month} onEdit={openEdit} />
+      <Breakdown month={month} />
+      <ClosingPanel month={month} />
+      <Fab onClick={openNew} />
+      <EntrySheet open={open} initial={editing} defaultDate={defaultDateFor(month)} onClose={close} />
+    </main>
+  );
+}

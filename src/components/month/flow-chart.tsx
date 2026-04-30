@@ -37,7 +37,7 @@ export function FlowChart({ month }: { month: ISOMonth }) {
         <span className="font-mono text-[0.65rem] tracking-widest uppercase text-sage">The flow of the month</span>
         <span className="text-xs text-sage">income above the line · expenses below</span>
       </header>
-      <div className="h-[80px]">
+      <div className="h-20">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barCategoryGap={2}>
             <Bar dataKey="value">
