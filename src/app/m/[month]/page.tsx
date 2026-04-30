@@ -1,0 +1,14 @@
+import { PageHead } from "@/components/month/page-head";
+
+export default async function MonthPage({ params }: { params: Promise<{ month: string }> }) {
+  const { month } = await params;
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return <main className="p-12">Bad month</main>;
+  }
+  return (
+    <main className="max-w-[1320px] mx-auto px-8 py-12">
+      <PageHead month={month} />
+      <p className="font-mono text-xs text-sage mt-12">Month page placeholder.</p>
+    </main>
+  );
+}
