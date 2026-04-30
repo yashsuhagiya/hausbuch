@@ -1,4 +1,5 @@
 "use client";
+import { motion } from "motion/react";
 import { useMemo } from "react";
 import { Dot } from "@/components/ui/dot";
 import { formatDateDE, monthOf, todayISO } from "@/lib/date";
@@ -56,8 +57,11 @@ export function EntriesList({ month, onEdit, projections = [] }: Props) {
             if (real && onEdit) onEdit(e);
           };
           return (
-            <li
+            <motion.li
               key={key}
+              initial={{ opacity: 0, y: -2 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.02, 0.4), duration: 0.2 }}
               className={`grid grid-cols-[60px_1fr_90px_110px] gap-4 items-baseline py-2 border-b border-dotted border-hairline relative ${
                 isToday ? "bg-rust/5 -mx-4 px-4" : ""
               } ${clickable ? "cursor-pointer" : ""}`}
@@ -91,7 +95,7 @@ export function EntriesList({ month, onEdit, projections = [] }: Props) {
               <span className={`font-display text-right tnum ${e.amount > 0 ? "text-green" : "text-charcoal"}`}>
                 {formatEUR(e.amount)}
               </span>
-            </li>
+            </motion.li>
           );
         })}
       </ul>
