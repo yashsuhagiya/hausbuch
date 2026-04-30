@@ -15,7 +15,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-html, body {
+html,
+body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans), system-ui, sans-serif;
@@ -28,6 +29,13 @@ body {
   min-height: 100vh;
 }
 
-.font-display { font-family: var(--font-display), serif; font-style: italic; }
-.font-mono    { font-family: var(--font-mono), monospace; }
-.tnum         { font-feature-settings: "tnum" on; }
+.font-display {
+  font-family: var(--font-display), serif;
+  font-style: italic;
+}
+.font-mono {
+  font-family: var(--font-mono), monospace;
+}
+.tnum {
+  font-feature-settings: "tnum" on;
+}

@@ -1,29 +1,29 @@
 export type ID = string;
-export type ISODate = string;   // 'YYYY-MM-DD'
-export type ISOMonth = string;  // 'YYYY-MM'
+export type ISODate = string; // 'YYYY-MM-DD'
+export type ISOMonth = string; // 'YYYY-MM'
 
 export type EntrySource = "manual" | "recurring";
 
 export interface Entry {
   id: ID;
   date: ISODate;
-  amount: number;          // cents, signed
+  amount: number; // cents, signed
   categoryId: ID;
   accountId: ID;
   note?: string;
   source: EntrySource;
   recurringId?: ID;
   postedForMonth?: ISOMonth;
-  chapterId: ID;           // 'current' in v1
+  chapterId: ID; // 'current' in v1
 }
 
 export interface Recurring {
   id: ID;
   label: string;
-  amount: number;          // cents, signed
+  amount: number; // cents, signed
   categoryId: ID;
   accountId: ID;
-  dayOfMonth: number;      // 1..28; 29-31 clamp to last day
+  dayOfMonth: number; // 1..28; 29-31 clamp to last day
   startMonth: ISOMonth;
   endMonth?: ISOMonth;
 }
@@ -47,5 +47,5 @@ export interface Snapshot {
   id: ID;
   date: ISODate;
   accountId: ID;
-  balance: number;         // cents, signed
+  balance: number; // cents, signed
 }

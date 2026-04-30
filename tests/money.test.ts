@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { decimalToCents, centsToDecimal, formatEUR } from "@/lib/money";
+import { describe, expect, it } from "vitest";
+import { centsToDecimal, decimalToCents, formatEUR } from "@/lib/money";
 
 describe("decimalToCents", () => {
   it("rounds to nearest cent", () => {
-    expect(decimalToCents(12.40)).toBe(1240);
-    expect(decimalToCents(12.405)).toBe(1241);  // banker's not required; round-half-up
+    expect(decimalToCents(12.4)).toBe(1240);
+    expect(decimalToCents(12.405)).toBe(1241); // banker's not required; round-half-up
     expect(decimalToCents(0.1 + 0.2)).toBe(30); // float-safe
     expect(decimalToCents(-7.5)).toBe(-750);
   });
@@ -12,7 +12,7 @@ describe("decimalToCents", () => {
 
 describe("centsToDecimal", () => {
   it("inverts decimalToCents", () => {
-    expect(centsToDecimal(1240)).toBe(12.40);
+    expect(centsToDecimal(1240)).toBe(12.4);
     expect(centsToDecimal(-750)).toBe(-7.5);
   });
 });
