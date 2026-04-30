@@ -1,13 +1,14 @@
 "use client";
 import { useMemo } from "react";
-import { Bar, BarChart, Cell, ResponsiveContainer } from "recharts";
+import { Bar, BarChart, Cell, ReferenceLine, ResponsiveContainer } from "recharts";
 import { currentMonth, daysInMonth, monthOf, todayISO } from "@/lib/date";
 import { useStore } from "@/lib/store";
 import type { ISOMonth } from "@/lib/types";
 
 interface DayDatum {
   day: number;
-  value: number;
+  income: number; // EUR, positive (above zero)
+  expense: number; // EUR, negative (below zero)
 }
 
 export function FlowChart({ month }: { month: ISOMonth }) {
@@ -18,10 +19,9 @@ export function FlowChart({ month }: { month: ISOMonth }) {
     return Array.from({ length: total }, (_, i) => {
       const day = i + 1;
       const dayEntries = entries.filter((e) => Number.parseInt(e.date.slice(8, 10), 10) === day);
-      const out = dayEntries.filter((e) => e.amount < 0).reduce((s, e) => s + e.amount, 0);
-      const inc = dayEntries.filter((e) => e.amount > 0).reduce((s, e) => s + e.amount, 0);
-      const value = inc !== 0 || out !== 0 ? (inc + out) / 100 : 0;
-      return { day, value };
+      const expense = dayEntries.filter((e) => e.amount < 0).reduce((s, e) => s + e.amount, 0) / 100;
+      const income = dayEntries.filter((e) => e.amount > 0).reduce((s, e) => s + e.amount, 0) / 100;
+      return { day, income, expense };
     });
   }, [allEntries, month, total]);
 
@@ -31,6 +31,9 @@ export function FlowChart({ month }: { month: ISOMonth }) {
   const midB = Math.min(15, total);
   const midC = todayDay ?? Math.min(22, total);
 
+  const incomeColor = (day: number) => (day === todayDay ? "var(--color-rust)" : "var(--color-green)");
+  const expenseColor = (day: number) => (day === todayDay ? "var(--color-rust)" : "var(--color-ink)");
+
   return (
     <section className="mt-9">
       <header className="flex justify-between items-baseline mb-3">
@@ -39,19 +42,17 @@ export function FlowChart({ month }: { month: ISOMonth }) {
       </header>
       <div className="h-20">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barCategoryGap={2}>
-            <Bar dataKey="value">
-              {data.map((d) => {
-                const fill =
-                  d.value === 0
-                    ? "transparent"
-                    : d.day === todayDay
-                      ? "var(--color-rust)"
-                      : d.value > 0
-                        ? "var(--color-green)"
-                        : "var(--color-ink)";
-                return <Cell key={d.day} fill={fill} />;
-              })}
+          <BarChart data={data} barCategoryGap={2} stackOffset="sign">
+            <ReferenceLine y={0} stroke="var(--color-hairline)" />
+            <Bar dataKey="income" stackId="flow">
+              {data.map((d) => (
+                <Cell key={`inc-${d.day}`} fill={d.income === 0 ? "transparent" : incomeColor(d.day)} />
+              ))}
+            </Bar>
+            <Bar dataKey="expense" stackId="flow">
+              {data.map((d) => (
+                <Cell key={`exp-${d.day}`} fill={d.expense === 0 ? "transparent" : expenseColor(d.day)} />
+              ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
