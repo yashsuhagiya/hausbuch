@@ -7,6 +7,7 @@ import { useStore } from "@/lib/store";
 export function DataSection() {
   const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const mergeRef = useRef<HTMLInputElement>(null);
   const splitwiseRef = useRef<HTMLInputElement>(null);
   const hydrate = useStore((s) => s.hydrate);
   const accounts = useStore((s) => s.accounts);
@@ -40,6 +41,23 @@ export function DataSection() {
         setMsg("Imported.");
       } catch (err) {
         setMsg(`Import failed: ${(err as Error).message}`);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function mergePicked(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const result = storage.mergeImport(String(reader.result));
+        hydrate();
+        const a = result.added;
+        setMsg(
+          `Merged: ${a.entries} entries, ${a.recurring} recurring, ${a.accounts} accounts, ${a.categories} categories, ${a.snapshots} snapshots${result.skippedDuplicateEntries ? ` · skipped ${result.skippedDuplicateEntries} duplicate entries` : ""}.`,
+        );
+      } catch (err) {
+        setMsg(`Merge failed: ${(err as Error).message}`);
       }
     };
     reader.readAsText(file);
@@ -123,6 +141,14 @@ export function DataSection() {
         </button>
         <button
           type="button"
+          onClick={() => mergeRef.current?.click()}
+          className="font-mono text-xs uppercase tracking-widest border border-ink px-3 py-2 hover:bg-ink hover:text-paper"
+          title="Add entries / accounts / recurring without overwriting existing data"
+        >
+          Merge JSON
+        </button>
+        <button
+          type="button"
           onClick={restoreBackup}
           className="font-mono text-xs uppercase tracking-widest border border-rust text-rust px-3 py-2 hover:bg-rust hover:text-paper"
         >
@@ -137,6 +163,17 @@ export function DataSection() {
             const f = e.target.files?.[0];
             if (f) importPicked(f);
             e.target.value = ""; // allow re-picking same file
+          }}
+        />
+        <input
+          ref={mergeRef}
+          type="file"
+          accept="application/json"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) mergePicked(f);
+            e.target.value = "";
           }}
         />
       </div>

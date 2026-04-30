@@ -177,6 +177,83 @@ export function importAll(json: string): void {
   localStorage.setItem(KEYS.version, String(VERSION));
 }
 
+/**
+ * Merge a partial export into existing state without overwriting.
+ *
+ * - entries: appended; rows with `importHash` matching existing entries are skipped (idempotent)
+ * - recurring / categories / accounts: upsert by id (existing rows replaced if id matches; new rows added)
+ * - snapshots: appended
+ * - posted: union
+ *
+ * Accepts the same JSON shape as `exportAll`, but every field is optional. Use this for
+ * partial imports (e.g. seeding a card account + transactions without overwriting).
+ */
+export function mergeImport(json: string): {
+  added: { entries: number; recurring: number; categories: number; accounts: number; snapshots: number };
+  skippedDuplicateEntries: number;
+} {
+  const parsed = JSON.parse(json) as { version?: number } & Partial<Snapshot1>;
+  if (parsed.version !== undefined && parsed.version !== VERSION) {
+    throw new Error(`unsupported version ${parsed.version}`);
+  }
+  backup();
+
+  const added = { entries: 0, recurring: 0, categories: 0, accounts: 0, snapshots: 0 };
+  let skippedDuplicateEntries = 0;
+
+  if (parsed.entries?.length) {
+    const existing = read<Entry[]>(KEYS.entries, []);
+    const existingHashes = new Set(existing.filter((e) => e.importHash).map((e) => e.importHash as string));
+    const next = [...existing];
+    for (const e of parsed.entries) {
+      if (e.importHash && existingHashes.has(e.importHash)) {
+        skippedDuplicateEntries++;
+        continue;
+      }
+      next.push(e);
+      if (e.importHash) existingHashes.add(e.importHash);
+      added.entries++;
+    }
+    write(KEYS.entries, next);
+  }
+
+  if (parsed.recurring?.length) {
+    for (const r of parsed.recurring) {
+      upsertRecurring(r);
+      added.recurring++;
+    }
+  }
+
+  if (parsed.meta?.categories?.length) {
+    for (const c of parsed.meta.categories) {
+      upsertCategory(c);
+      added.categories++;
+    }
+  }
+
+  if (parsed.meta?.accounts?.length) {
+    for (const a of parsed.meta.accounts) {
+      upsertAccount(a);
+      added.accounts++;
+    }
+  }
+
+  if (parsed.meta?.snapshots?.length) {
+    const meta = getMeta();
+    setMeta({ snapshots: [...meta.snapshots, ...parsed.meta.snapshots] });
+    added.snapshots = parsed.meta.snapshots.length;
+  }
+
+  if (parsed.posted?.length) {
+    const existing = read<ISOMonth[]>(KEYS.posted, []);
+    const set = new Set(existing);
+    for (const m of parsed.posted) set.add(m);
+    write(KEYS.posted, [...set]);
+  }
+
+  return { added, skippedDuplicateEntries };
+}
+
 // ---- migrations (no-op in v1, runner is in place for v2+) ----
 const MIGRATIONS: Record<number, () => void> = {
   1: () => {

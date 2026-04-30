@@ -132,3 +132,103 @@ describe("backup", () => {
     expect(backupAfter.entries).toHaveLength(1);
   });
 });
+
+describe("mergeImport", () => {
+  it("appends entries without overwriting existing", () => {
+    storage.addEntry({
+      date: "2026-04-01",
+      amount: -100,
+      categoryId: "cat-x",
+      accountId: "acc-x",
+      source: "manual",
+      chapterId: "current",
+    });
+    const partial = JSON.stringify({
+      version: 2,
+      entries: [
+        {
+          id: "merged-1",
+          date: "2026-04-15",
+          amount: -250,
+          categoryId: "cat-x",
+          accountId: "acc-x",
+          source: "manual",
+          chapterId: "current",
+        },
+      ],
+    });
+    const result = storage.mergeImport(partial);
+    expect(result.added.entries).toBe(1);
+    expect(storage.getEntries()).toHaveLength(2);
+  });
+
+  it("skips entries with importHash already present (idempotent)", () => {
+    storage.addEntry({
+      date: "2026-04-01",
+      amount: -100,
+      categoryId: "cat-x",
+      accountId: "acc-x",
+      source: "manual",
+      chapterId: "current",
+      importHash: "abc123",
+    });
+    const partial = JSON.stringify({
+      version: 2,
+      entries: [
+        {
+          id: "dup",
+          date: "2026-04-01",
+          amount: -100,
+          categoryId: "cat-x",
+          accountId: "acc-x",
+          source: "manual",
+          chapterId: "current",
+          importHash: "abc123",
+        },
+      ],
+    });
+    const result = storage.mergeImport(partial);
+    expect(result.added.entries).toBe(0);
+    expect(result.skippedDuplicateEntries).toBe(1);
+  });
+
+  it("upserts accounts and recurring by id", () => {
+    storage.upsertAccount({ id: "acc-giro", label: "Giro", kind: "giro", archived: false });
+    const partial = JSON.stringify({
+      version: 2,
+      meta: {
+        accounts: [{ id: "acc-card", label: "Mastercard Gold", kind: "credit", archived: false }],
+      },
+      recurring: [
+        {
+          id: "r-salary",
+          label: "Salary",
+          amount: 271558,
+          categoryId: "cat-income",
+          accountId: "acc-giro",
+          dayOfMonth: 1,
+          startMonth: "2026-04",
+        },
+      ],
+    });
+    const result = storage.mergeImport(partial);
+    expect(result.added.accounts).toBe(1);
+    expect(result.added.recurring).toBe(1);
+    expect(storage.getAccounts()).toHaveLength(2);
+    expect(storage.getRecurring()).toHaveLength(1);
+  });
+
+  it("rejects mismatched version", () => {
+    expect(() => storage.mergeImport(JSON.stringify({ version: 99, entries: [] }))).toThrow();
+  });
+
+  it("accepts payload with no version (treated as current)", () => {
+    expect(() =>
+      storage.mergeImport(
+        JSON.stringify({
+          meta: { accounts: [{ id: "acc-x", label: "X", kind: "cash", archived: false }] },
+        }),
+      ),
+    ).not.toThrow();
+  });
+});
