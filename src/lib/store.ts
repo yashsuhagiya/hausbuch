@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { monthOf } from "./date";
+import { postRecurringForCurrent } from "./recurring";
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from "./seed";
 import * as storage from "./storage";
 import type { Account, Category, Entry, ID, ISOMonth, Recurring, Snapshot } from "./types";
@@ -69,6 +70,7 @@ export const useStore = create<State>((set, get) => ({
       snapshots: storage.getSnapshots(),
       postedMonths: new Set(readPosted()),
     });
+    postRecurringForCurrent();
   },
 
   reset: () =>
