@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { EntrySheet } from "@/components/entry-sheet/sheet";
 import { Breakdown } from "@/components/month/breakdown";
@@ -8,7 +9,8 @@ import { Fab } from "@/components/month/fab";
 import { FlowChart } from "@/components/month/flow-chart";
 import { PageHead } from "@/components/month/page-head";
 import { StatsStrip } from "@/components/month/stats-strip";
-import { currentMonth, todayISO } from "@/lib/date";
+import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
+import { currentMonth, nextMonth, prevMonth, todayISO } from "@/lib/date";
 import { projectRecurringFor } from "@/lib/recurring";
 import { useStore } from "@/lib/store";
 import type { Entry, ISODate, ISOMonth } from "@/lib/types";
@@ -18,6 +20,7 @@ function defaultDateFor(month: ISOMonth): ISODate {
 }
 
 export function MonthPageShell({ month }: { month: ISOMonth }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | undefined>(undefined);
 
@@ -50,6 +53,11 @@ export function MonthPageShell({ month }: { month: ISOMonth }) {
       <ClosingPanel month={month} />
       <Fab onClick={openNew} />
       <EntrySheet open={open} initial={editing} defaultDate={defaultDateFor(month)} onClose={close} />
+      <KeyboardShortcuts
+        n={openNew}
+        j={() => router.push(`/m/${prevMonth(month)}`)}
+        k={() => router.push(`/m/${nextMonth(month)}`)}
+      />
     </main>
   );
 }
