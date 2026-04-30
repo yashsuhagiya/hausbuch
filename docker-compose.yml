@@ -1,0 +1,23 @@
+name: hausbuch
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: hausbuch-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hausbuch
+      POSTGRES_PASSWORD: hausbuch
+      POSTGRES_DB: hausbuch
+    ports:
+      - "5432:5432"
+    volumes:
+      - hausbuch-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hausbuch"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hausbuch-pgdata:
