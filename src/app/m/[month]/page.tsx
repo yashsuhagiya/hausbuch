@@ -1,3 +1,4 @@
+import { Breakdown } from "@/components/month/breakdown";
 import { EntriesList } from "@/components/month/entries-list";
 import { FlowChart } from "@/components/month/flow-chart";
 import { PageHead } from "@/components/month/page-head";
@@ -14,6 +15,7 @@ export default async function MonthPage({ params }: { params: Promise<{ month: s
       <StatsStrip month={month} />
       <FlowChart month={month} />
       <EntriesList month={month} />
+      <Breakdown month={month} />
     </main>
   );
 }
