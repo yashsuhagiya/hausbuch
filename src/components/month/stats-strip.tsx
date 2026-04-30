@@ -20,38 +20,39 @@ export function StatsStrip({ month }: { month: ISOMonth }) {
   const expenseCount = entries.filter((e) => e.amount < 0).length;
 
   return (
-    <div className="grid grid-cols-4 py-5 border-b border-hairline mb-8">
-      <Cell label="In" value={stats.in} delta="this month" tone="pos" />
-      <Cell label="Out" value={stats.out} delta={`${expenseCount} entries`} tone="neg" />
-      <Cell label="Net" value={stats.net} delta="vs ledger" />
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 md:gap-y-0 py-5 border-b border-hairline mb-8">
+      <Cell index={0} label="In" value={stats.in} delta="this month" tone="pos" />
+      <Cell index={1} label="Out" value={stats.out} delta={`${expenseCount} entries`} tone="neg" />
+      <Cell index={2} label="Net" value={stats.net} delta="vs ledger" />
       <Cell
+        index={3}
         label="Daily, remaining"
         value={Math.round(projectedRemaining)}
         delta={`${remaining} days to month-end`}
-        last
       />
     </div>
   );
 }
 
 function Cell({
+  index,
   label,
   value,
   delta,
   tone,
-  last = false,
 }: {
+  index: number;
   label: string;
   value: number;
   delta: string;
   tone?: "pos" | "neg";
-  last?: boolean;
 }) {
   const toneClass = tone === "pos" ? "text-green" : tone === "neg" ? "text-charcoal" : "";
+  const isLast = index === 3;
   return (
-    <div className={`px-5 ${last ? "" : "border-r border-hairline"} first:pl-0`}>
+    <div className={`px-3 md:px-5 ${isLast ? "" : "md:border-r md:border-hairline"} md:first:pl-0`}>
       <div className="font-mono text-[0.6rem] tracking-widest uppercase text-sage mb-1">{label}</div>
-      <div className={`font-display text-2xl tnum ${toneClass}`}>{formatEUR(value)}</div>
+      <div className={`font-display text-xl md:text-2xl tnum whitespace-nowrap ${toneClass}`}>{formatEUR(value)}</div>
       <div className="text-xs text-sage mt-1">{delta}</div>
     </div>
   );

@@ -44,7 +44,7 @@ export function MonthPageShell({ month }: { month: ISOMonth }) {
   const close = () => setOpen(false);
 
   return (
-    <main className="max-w-[1320px] mx-auto px-8 py-12">
+    <main className="max-w-[1320px] mx-auto px-4 md:px-8 py-8 md:py-12">
       <PageHead month={month} />
       <StatsStrip month={month} />
       <FlowChart month={month} />

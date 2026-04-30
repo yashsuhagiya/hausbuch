@@ -62,7 +62,7 @@ export function EntriesList({ month, onEdit, projections = [] }: Props) {
               initial={{ opacity: 0, y: -2 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.02, 0.4), duration: 0.2 }}
-              className={`grid grid-cols-[60px_1fr_90px_110px] gap-4 items-baseline py-2 border-b border-dotted border-hairline relative ${
+              className={`grid grid-cols-[44px_1fr_85px] md:grid-cols-[60px_1fr_90px_110px] gap-2 md:gap-4 items-baseline py-2 border-b border-dotted border-hairline relative ${
                 isToday ? "bg-rust/5 -mx-4 px-4" : ""
               } ${clickable ? "cursor-pointer" : ""}`}
               onClick={clickable ? activate : undefined}
@@ -91,8 +91,12 @@ export function EntriesList({ month, onEdit, projections = [] }: Props) {
                 {cat?.label ?? "—"}
                 {e.note && <small className="block text-sage italic text-xs mt-0.5">{e.note}</small>}
               </span>
-              <span className="font-mono text-[0.62rem] uppercase tracking-wide text-sage">{cat?.label}</span>
-              <span className={`font-display text-right tnum ${e.amount > 0 ? "text-green" : "text-charcoal"}`}>
+              <span className="hidden md:block font-mono text-[0.62rem] uppercase tracking-wide text-sage">
+                {cat?.label}
+              </span>
+              <span
+                className={`font-display text-right tnum whitespace-nowrap ${e.amount > 0 ? "text-green" : "text-charcoal"}`}
+              >
                 {formatEUR(e.amount)}
               </span>
             </motion.li>
