@@ -1,0 +1,29 @@
+# Brainstorming workspace (visual companion artifacts)
+.superpowers/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node / Next.js (added now so future scaffold doesn't pollute the first commit)
+node_modules/
+.next/
+out/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+*.log
+.vercel
+.turbo
+
+# Test / coverage
+coverage/
+.nyc_output/
