@@ -15,6 +15,7 @@ export interface Entry {
   recurringId?: ID;
   postedForMonth?: ISOMonth;
   chapterId: ID; // 'current' in v1
+  importHash?: string;
 }
 
 export interface Recurring {

@@ -11,7 +11,7 @@ const KEYS = {
   version: "hausbuch:version",
 } as const;
 
-const VERSION = 1;
+const VERSION = 2;
 
 interface Meta {
   categories: Category[];
@@ -180,7 +180,10 @@ export function importAll(json: string): void {
 // ---- migrations (no-op in v1, runner is in place for v2+) ----
 const MIGRATIONS: Record<number, () => void> = {
   1: () => {
-    /* no-op */
+    /* no-op (legacy) */
+  },
+  2: () => {
+    /* no-op: importHash is optional, no migration needed */
   },
 };
 
