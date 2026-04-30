@@ -1,0 +1,174 @@
+// Hausbuch v2 — cross-device sync schema
+// Domain models mirror src/lib/types.ts + Better Auth required tables.
+// Connection URL is wired via prisma.config.ts (reads DATABASE_URL).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// In Prisma v7, the connection URL lives in prisma.config.ts (datasource.url),
+// NOT in this schema file. The IDE may flag this — run `prisma validate` for truth.
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Better Auth core tables ────────────────────────────────────────────────
+// https://www.better-auth.com/docs/concepts/database
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions Session[]
+  accounts AuthAccount[]
+
+  // Hausbuch domain relations
+  entries      Entry[]
+  recurring    Recurring[]
+  categories   Category[]
+  bookAccounts BookAccount[]
+  snapshots    Snapshot[]
+  postedMonths PostedMonth[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// "Account" is Better Auth's term for an OAuth / credential link. Renamed to
+// AuthAccount to avoid clashing with Hausbuch's Account (renamed BookAccount).
+model AuthAccount {
+  id                    String    @id
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId             String
+  providerId            String // 'credential' | 'google' | 'github' | …
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+// ─── Hausbuch domain ────────────────────────────────────────────────────────
+
+model Entry {
+  id             String   @id
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           String // 'YYYY-MM-DD'
+  amount         Int // signed cents
+  categoryId     String
+  accountId      String
+  note           String?
+  source         String // 'manual' | 'recurring'
+  recurringId    String?
+  postedForMonth String? // ISOMonth
+  chapterId      String   @default("current")
+  importHash     String?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([userId, importHash])
+  @@index([userId, recurringId, postedForMonth])
+}
+
+model Recurring {
+  id         String   @id
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label      String
+  amount     Int
+  categoryId String
+  accountId  String
+  dayOfMonth Int
+  startMonth String
+  endMonth   String?
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Category {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  kind      String // 'income' | 'expense'
+  color     String?
+  archived  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Renamed from Account to BookAccount so Better Auth's AuthAccount doesn't collide.
+// In Hausbuch app code (lib/types.ts) this is still called "Account".
+model BookAccount {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  kind      String // 'giro' | 'cash' | 'savings' | 'credit'
+  archived  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Snapshot {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String
+  accountId String
+  balance   Int
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model PostedMonth {
+  userId String
+  month  String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, month])
+}

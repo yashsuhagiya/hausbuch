@@ -45,3 +45,5 @@ data/
 test-results/
 playwright-report/
 playwright/.cache/
+
+/src/generated/prisma
