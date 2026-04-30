@@ -9,6 +9,7 @@ export const SEED_CATEGORIES: Category[] = [
   { id: "cat-transit", label: "Transit", kind: "expense", archived: false },
   { id: "cat-utilities", label: "Utilities", kind: "expense", archived: false },
   { id: "cat-subs", label: "Subscriptions", kind: "expense", archived: false },
+  { id: "cat-india", label: "Send to India", kind: "expense", archived: false },
   { id: "cat-other", label: "Other", kind: "expense", archived: false },
 ];
 
