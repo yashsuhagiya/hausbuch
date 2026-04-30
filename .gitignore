@@ -1,5 +1,6 @@
 # Brainstorming workspace (visual companion artifacts)
 .superpowers/
+docs/
 
 # OS
 .DS_Store
@@ -27,3 +28,17 @@ build/
 # Test / coverage
 coverage/
 .nyc_output/
+
+# TypeScript / Next.js
+*.tsbuildinfo
+next-env.d.ts
+
+# Misc
+*.pem
+.pnp
+.pnp.*
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
