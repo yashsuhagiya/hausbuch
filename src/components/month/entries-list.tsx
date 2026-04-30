@@ -1,6 +1,7 @@
 "use client";
+import { useMemo } from "react";
 import { Dot } from "@/components/ui/dot";
-import { formatDateDE, todayISO } from "@/lib/date";
+import { formatDateDE, monthOf, todayISO } from "@/lib/date";
 import { formatEUR } from "@/lib/money";
 import { useStore } from "@/lib/store";
 import type { Entry, ISOMonth } from "@/lib/types";
@@ -20,9 +21,15 @@ function isReal(e: Entry | ProjectedEntry): e is Entry {
 }
 
 export function EntriesList({ month, onEdit, projections = [] }: Props) {
-  const stored = useStore((s) => s.entriesForMonth(month));
+  const allEntries = useStore((s) => s.entries);
   const cats = useStore((s) => s.categories);
-  const all: (Entry | ProjectedEntry)[] = [...stored, ...projections].sort((a, b) => b.date.localeCompare(a.date));
+  const all: (Entry | ProjectedEntry)[] = useMemo(
+    () =>
+      [...allEntries.filter((e) => monthOf(e.date) === month), ...projections].sort((a, b) =>
+        b.date.localeCompare(a.date),
+      ),
+    [allEntries, month, projections],
+  );
   const today = todayISO();
 
   if (all.length === 0) {

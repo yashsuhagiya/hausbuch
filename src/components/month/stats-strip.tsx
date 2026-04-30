@@ -1,12 +1,14 @@
 "use client";
-import { currentMonth, daysInMonth, todayISO } from "@/lib/date";
+import { useMemo } from "react";
+import { currentMonth, daysInMonth, monthOf, todayISO } from "@/lib/date";
 import { formatEUR } from "@/lib/money";
 import { computeStats, useStore } from "@/lib/store";
 import type { ISOMonth } from "@/lib/types";
 
 export function StatsStrip({ month }: { month: ISOMonth }) {
-  const entries = useStore((s) => s.entriesForMonth(month));
-  const stats = computeStats(entries);
+  const allEntries = useStore((s) => s.entries);
+  const entries = useMemo(() => allEntries.filter((e) => monthOf(e.date) === month), [allEntries, month]);
+  const stats = useMemo(() => computeStats(entries), [entries]);
 
   const isCurrent = month === currentMonth();
   const todayDay = isCurrent ? Number.parseInt(todayISO().split("-")[2], 10) : daysInMonth(month);

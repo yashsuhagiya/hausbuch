@@ -1,6 +1,7 @@
 "use client";
+import { useMemo } from "react";
 import { Bar, BarChart, Cell, ResponsiveContainer } from "recharts";
-import { currentMonth, daysInMonth, todayISO } from "@/lib/date";
+import { currentMonth, daysInMonth, monthOf, todayISO } from "@/lib/date";
 import { useStore } from "@/lib/store";
 import type { ISOMonth } from "@/lib/types";
 
@@ -10,17 +11,19 @@ interface DayDatum {
 }
 
 export function FlowChart({ month }: { month: ISOMonth }) {
-  const entries = useStore((s) => s.entriesForMonth(month));
+  const allEntries = useStore((s) => s.entries);
   const total = daysInMonth(month);
-  const data: DayDatum[] = Array.from({ length: total }, (_, i) => {
-    const day = i + 1;
-    const dayEntries = entries.filter((e) => Number.parseInt(e.date.slice(8, 10), 10) === day);
-    const out = dayEntries.filter((e) => e.amount < 0).reduce((s, e) => s + e.amount, 0);
-    const inc = dayEntries.filter((e) => e.amount > 0).reduce((s, e) => s + e.amount, 0);
-    // Show income (positive) when present; otherwise expenses (negative). Mixed days show net.
-    const value = inc !== 0 || out !== 0 ? (inc + out) / 100 : 0;
-    return { day, value };
-  });
+  const data: DayDatum[] = useMemo(() => {
+    const entries = allEntries.filter((e) => monthOf(e.date) === month);
+    return Array.from({ length: total }, (_, i) => {
+      const day = i + 1;
+      const dayEntries = entries.filter((e) => Number.parseInt(e.date.slice(8, 10), 10) === day);
+      const out = dayEntries.filter((e) => e.amount < 0).reduce((s, e) => s + e.amount, 0);
+      const inc = dayEntries.filter((e) => e.amount > 0).reduce((s, e) => s + e.amount, 0);
+      const value = inc !== 0 || out !== 0 ? (inc + out) / 100 : 0;
+      return { day, value };
+    });
+  }, [allEntries, month, total]);
 
   const todayDay = month === currentMonth() ? Number.parseInt(todayISO().split("-")[2], 10) : null;
   const lastDay = total;
