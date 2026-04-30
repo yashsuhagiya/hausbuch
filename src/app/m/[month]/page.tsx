@@ -1,3 +1,4 @@
+import { EntriesList } from "@/components/month/entries-list";
 import { PageHead } from "@/components/month/page-head";
 import { StatsStrip } from "@/components/month/stats-strip";
 
@@ -10,6 +11,7 @@ export default async function MonthPage({ params }: { params: Promise<{ month: s
     <main className="max-w-[1320px] mx-auto px-8 py-12">
       <PageHead month={month} />
       <StatsStrip month={month} />
+      <EntriesList month={month} />
     </main>
   );
 }
