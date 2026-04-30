@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { StoreHydrator } from "@/components/store-hydrator";
 import "./globals.css";
@@ -14,6 +14,11 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono"
 export const metadata: Metadata = {
   title: "Hausbuch",
   description: "Ein einfaches Hausbuch.",
+  manifest: "/manifest.webmanifest",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1B2A3B",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
