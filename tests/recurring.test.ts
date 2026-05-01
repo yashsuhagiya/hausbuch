@@ -3,10 +3,10 @@ import { postRecurringThrough, projectRecurringFor } from "@/lib/recurring";
 import { useStore } from "@/lib/store";
 import type { Recurring } from "@/lib/types";
 
-beforeEach(() => {
+beforeEach(async () => {
   localStorage.clear();
   useStore.getState().reset();
-  useStore.getState().hydrate();
+  await useStore.getState().hydrate();
 });
 
 const rent: Recurring = {

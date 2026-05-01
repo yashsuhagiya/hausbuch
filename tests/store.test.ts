@@ -7,14 +7,14 @@ beforeEach(() => {
 });
 
 describe("store", () => {
-  it("hydrates with seed data on first run", () => {
-    useStore.getState().hydrate();
+  it("hydrates with seed data on first run", async () => {
+    await useStore.getState().hydrate();
     expect(useStore.getState().categories.length).toBeGreaterThan(0);
     expect(useStore.getState().accounts).toHaveLength(1);
   });
 
-  it("addEntry round-trips through localStorage", () => {
-    useStore.getState().hydrate();
+  it("addEntry round-trips through localStorage", async () => {
+    await useStore.getState().hydrate();
     const e = useStore.getState().addEntry({
       date: "2026-04-22",
       amount: -6840,
@@ -26,8 +26,8 @@ describe("store", () => {
     expect(useStore.getState().entries.find((x) => x.id === e.id)).toBeTruthy();
   });
 
-  it("entriesForMonth filters", () => {
-    useStore.getState().hydrate();
+  it("entriesForMonth filters", async () => {
+    await useStore.getState().hydrate();
     useStore.getState().addEntry({
       date: "2026-04-22",
       amount: -100,

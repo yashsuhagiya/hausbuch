@@ -60,8 +60,8 @@ export function SyncSection() {
       {session?.user ? (
         <div>
           <p className="font-display italic text-sage mb-3">
-            Signed in as <span className="text-ink">{session.user.email}</span>. Cross-device sync coming in the next
-            phase.
+            Signed in as <span className="text-ink">{session.user.email}</span>. Hausbuch now reads from your account on
+            load. Writing through to the cloud lands in the next phase — for now, edits stay on this device.
           </p>
           <button
             type="button"

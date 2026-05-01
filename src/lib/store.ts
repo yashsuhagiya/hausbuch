@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getBackend } from "./backend";
 import { monthOf } from "./date";
 import { postRecurringForCurrent } from "./recurring";
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from "./seed";
@@ -14,7 +15,7 @@ interface State {
   snapshots: Snapshot[];
   postedMonths: Set<ISOMonth>;
 
-  hydrate: () => void;
+  hydrate: (signedIn?: boolean) => Promise<void>;
   reset: () => void;
 
   addEntry: (e: Omit<Entry, "id">) => Entry;
@@ -49,27 +50,51 @@ export const useStore = create<State>((set, get) => ({
   snapshots: [],
   postedMonths: new Set(),
 
-  hydrate: () => {
+  hydrate: async (signedIn = false) => {
     storage.runMigrations();
-    let categories = storage.getCategories();
-    let accounts = storage.getAccounts();
-    if (categories.length === 0) {
-      SEED_CATEGORIES.forEach(storage.upsertCategory);
-      categories = storage.getCategories();
+
+    // Seed defaults into local before deciding which backend to read from —
+    // a signed-in user with an empty server account still needs categories/accounts
+    // to render. Phase 4 will push these to the server on first sign-in.
+    if (storage.getCategories().length === 0) SEED_CATEGORIES.forEach(storage.upsertCategory);
+    if (storage.getAccounts().length === 0) SEED_ACCOUNTS.forEach(storage.upsertAccount);
+
+    const backend = getBackend(signedIn);
+    try {
+      const snap = await backend.pull();
+      // If the remote pull came back empty (new account), fall back to local
+      // so seeded categories/accounts still appear. Phase 4 handles upload.
+      const empty =
+        snap.entries.length === 0 &&
+        snap.recurring.length === 0 &&
+        snap.categories.length === 0 &&
+        snap.accounts.length === 0;
+      const source = signedIn && empty ? await getBackend(false).pull() : snap;
+      set({
+        hydrated: true,
+        entries: source.entries,
+        recurring: source.recurring,
+        categories: source.categories,
+        accounts: source.accounts,
+        snapshots: source.snapshots,
+        postedMonths: new Set(source.postedMonths),
+      });
+    } catch (err) {
+      // Remote failure (offline, server error) → fall back to local cache
+      // so the app stays usable. A toast/banner can surface this in Phase 3.
+      console.error("[hydrate] remote pull failed, falling back to local:", err);
+      const local = await getBackend(false).pull();
+      set({
+        hydrated: true,
+        entries: local.entries,
+        recurring: local.recurring,
+        categories: local.categories,
+        accounts: local.accounts,
+        snapshots: local.snapshots,
+        postedMonths: new Set(local.postedMonths),
+      });
     }
-    if (accounts.length === 0) {
-      SEED_ACCOUNTS.forEach(storage.upsertAccount);
-      accounts = storage.getAccounts();
-    }
-    set({
-      hydrated: true,
-      entries: storage.getEntries(),
-      recurring: storage.getRecurring(),
-      categories,
-      accounts,
-      snapshots: storage.getSnapshots(),
-      postedMonths: new Set(readPosted()),
-    });
+
     postRecurringForCurrent();
   },
 
@@ -127,12 +152,3 @@ export const useStore = create<State>((set, get) => ({
 
   entriesForMonth: (m) => get().entries.filter((e) => monthOf(e.date) === m),
 }));
-
-function readPosted(): ISOMonth[] {
-  if (typeof localStorage === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem("hausbuch:posted-months") ?? "[]");
-  } catch {
-    return [];
-  }
-}

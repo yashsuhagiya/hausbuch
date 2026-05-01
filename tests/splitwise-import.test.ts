@@ -14,10 +14,10 @@ const fixture = `Date,Description,Category,Cost,Currency,Alice,Yash Suhagiya,Bob
 2024-06-30,Total balance, , ,EUR,0.00,0.00,0.00
 `;
 
-beforeEach(() => {
+beforeEach(async () => {
   localStorage.clear();
   useStore.getState().reset();
-  useStore.getState().hydrate();
+  await useStore.getState().hydrate();
 });
 
 describe("parseSplitwiseCSV", () => {
