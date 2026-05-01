@@ -1,13 +1,16 @@
 import { create } from "zustand";
 import { getBackend } from "./backend";
 import { monthOf } from "./date";
+import { newId } from "./ids";
 import { postRecurringForCurrent } from "./recurring";
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from "./seed";
 import * as storage from "./storage";
+import { migrateFromLocalAction } from "./sync-actions";
 import type { Account, Category, Entry, ID, ISOMonth, Recurring, Snapshot } from "./types";
 
 interface State {
   hydrated: boolean;
+  signedIn: boolean;
   entries: Entry[];
   recurring: Recurring[];
   categories: Category[];
@@ -41,8 +44,36 @@ export function computeStats(entries: Entry[]) {
   return { in: inc, out, net: inc + out };
 }
 
+// Server-side reflection of every local mutation when signed in. We don't await
+// — the UI updates from the optimistic local write immediately. Failures are
+// logged; Phase 3.5 will queue them for retry on reconnect.
+function reflectRemote(operation: () => Promise<void>): void {
+  operation().catch((err) => {
+    console.error("[remote-sync] failed:", err);
+  });
+}
+
+function isEmpty(snap: {
+  entries: unknown[];
+  recurring: unknown[];
+  categories: unknown[];
+  accounts: unknown[];
+  snapshots: unknown[];
+  postedMonths: unknown[];
+}): boolean {
+  return (
+    snap.entries.length === 0 &&
+    snap.recurring.length === 0 &&
+    snap.categories.length === 0 &&
+    snap.accounts.length === 0 &&
+    snap.snapshots.length === 0 &&
+    snap.postedMonths.length === 0
+  );
+}
+
 export const useStore = create<State>((set, get) => ({
   hydrated: false,
+  signedIn: false,
   entries: [],
   recurring: [],
   categories: [],
@@ -61,31 +92,35 @@ export const useStore = create<State>((set, get) => ({
 
     const backend = getBackend(signedIn);
     try {
-      const snap = await backend.pull();
-      // If the remote pull came back empty (new account), fall back to local
-      // so seeded categories/accounts still appear. Phase 4 handles upload.
-      const empty =
-        snap.entries.length === 0 &&
-        snap.recurring.length === 0 &&
-        snap.categories.length === 0 &&
-        snap.accounts.length === 0;
-      const source = signedIn && empty ? await getBackend(false).pull() : snap;
+      let snap = await backend.pull();
+      // First-sign-in migration: server has no rows for this user yet, but
+      // localStorage already has data. Push everything up so this device's
+      // history isn't orphaned, then re-pull so timestamps come from the DB.
+      if (signedIn && isEmpty(snap)) {
+        const local = await getBackend(false).pull();
+        if (!isEmpty(local)) {
+          await migrateFromLocalAction(local);
+          snap = await backend.pull();
+        }
+      }
       set({
         hydrated: true,
-        entries: source.entries,
-        recurring: source.recurring,
-        categories: source.categories,
-        accounts: source.accounts,
-        snapshots: source.snapshots,
-        postedMonths: new Set(source.postedMonths),
+        signedIn,
+        entries: snap.entries,
+        recurring: snap.recurring,
+        categories: snap.categories,
+        accounts: snap.accounts,
+        snapshots: snap.snapshots,
+        postedMonths: new Set(snap.postedMonths),
       });
     } catch (err) {
       // Remote failure (offline, server error) → fall back to local cache
-      // so the app stays usable. A toast/banner can surface this in Phase 3.
+      // so the app stays usable. A toast/banner can surface this later.
       console.error("[hydrate] remote pull failed, falling back to local:", err);
       const local = await getBackend(false).pull();
       set({
         hydrated: true,
+        signedIn: false, // mutations should stay local-only until reconnect
         entries: local.entries,
         recurring: local.recurring,
         categories: local.categories,
@@ -101,6 +136,7 @@ export const useStore = create<State>((set, get) => ({
   reset: () =>
     set({
       hydrated: false,
+      signedIn: false,
       entries: [],
       recurring: [],
       categories: [],
@@ -110,44 +146,57 @@ export const useStore = create<State>((set, get) => ({
     }),
 
   addEntry: (e) => {
-    const created = storage.addEntry(e);
+    // Generate id locally so both LS and remote use the same id — keeps
+    // optimistic UI stable and avoids round-trip races.
+    const created: Entry = { id: newId(), ...e };
+    storage.addEntry(created); // LocalBackend write (always); ignored return id since we already have ours
     set((s) => ({ entries: [...s.entries, created] }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).upsertEntry(created));
     return created;
   },
   updateEntry: (id, patch) => {
     const updated = storage.updateEntry(id, patch);
     set((s) => ({ entries: s.entries.map((x) => (x.id === id ? updated : x)) }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).upsertEntry(updated));
   },
   deleteEntry: (id) => {
     storage.deleteEntry(id);
     set((s) => ({ entries: s.entries.filter((x) => x.id !== id) }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).deleteEntry(id));
   },
 
   upsertRecurring: (r) => {
     storage.upsertRecurring(r);
     set((s) => ({ recurring: [...s.recurring.filter((x) => x.id !== r.id), r] }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).upsertRecurring(r));
   },
   deleteRecurring: (id) => {
     storage.deleteRecurring(id);
     set((s) => ({ recurring: s.recurring.filter((x) => x.id !== id) }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).deleteRecurring(id));
   },
 
   upsertCategory: (c) => {
     storage.upsertCategory(c);
     set((s) => ({ categories: [...s.categories.filter((x) => x.id !== c.id), c] }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).upsertCategory(c));
   },
   upsertAccount: (a) => {
     storage.upsertAccount(a);
     set((s) => ({ accounts: [...s.accounts.filter((x) => x.id !== a.id), a] }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).upsertAccount(a));
   },
   addSnapshot: (s) => {
-    const created = storage.addSnapshot(s);
+    const created: Snapshot = { id: newId(), ...s };
+    storage.addSnapshot(created); // returned id ignored — we already pinned ours
     set((st) => ({ snapshots: [...st.snapshots, created] }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).addSnapshot(created));
   },
 
   markPosted: (m) => {
     storage.markPosted(m);
     set((s) => ({ postedMonths: new Set(s.postedMonths).add(m) }));
+    if (get().signedIn) reflectRemote(() => getBackend(true).markPosted(m));
   },
 
   entriesForMonth: (m) => get().entries.filter((e) => monthOf(e.date) === m),

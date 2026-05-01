@@ -60,8 +60,8 @@ export function SyncSection() {
       {session?.user ? (
         <div>
           <p className="font-display italic text-sage mb-3">
-            Signed in as <span className="text-ink">{session.user.email}</span>. Hausbuch now reads from your account on
-            load. Writing through to the cloud lands in the next phase — for now, edits stay on this device.
+            Signed in as <span className="text-ink">{session.user.email}</span>. This device is syncing with your
+            account — edits propagate to your other devices on their next load.
           </p>
           <button
             type="button"
@@ -75,8 +75,8 @@ export function SyncSection() {
       ) : (
         <div>
           <p className="font-display italic text-sage mb-3">
-            Sign in to use Hausbuch on multiple devices. (Sync wiring lands in the next phase — for now this just
-            creates your account.)
+            Sign in to use Hausbuch on multiple devices. Your local data on this device uploads to your account on first
+            sign-in.
           </p>
 
           <div className="flex gap-2 mb-3">
