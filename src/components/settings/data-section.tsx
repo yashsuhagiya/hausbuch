@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
+import { formatEUR } from "@/lib/money";
 import { importSplitwiseRows, type ParsedSplitwise, parseSplitwiseCSV } from "@/lib/splitwise-import";
 import * as storage from "@/lib/storage";
 import { useStore } from "@/lib/store";
@@ -103,8 +104,12 @@ export function DataSection() {
     if (!parsed || !userColumn || !accountId) return;
     const result = importSplitwiseRows(parsed.rows, { userColumn, accountId });
     const s = result.skipped;
+    const lent =
+      s.paidForOthers > 0
+        ? ` · you fronted ${formatEUR(result.paidForOthersCents)} for others across ${s.paidForOthers} row${s.paidForOthers === 1 ? "" : "s"} (not added to ledger)`
+        : "";
     setMsg(
-      `Imported ${result.imported.length} (skipped: ${s.zero} zero, ${s.payment} payment, ${s.nonEur} non-EUR, ${s.duplicate} duplicate${s.other ? `, ${s.other} other` : ""}).`,
+      `Imported ${result.imported.length} (skipped: ${s.zero} zero, ${s.payment} payment, ${s.nonEur} non-EUR, ${s.duplicate} duplicate${s.other ? `, ${s.other} other` : ""})${lent}.`,
     );
     setParsed(null);
     setUserColumn("");
@@ -182,8 +187,10 @@ export function DataSection() {
       <div className="mt-8 pt-6 border-t border-hairline">
         <h3 className="font-display text-xl italic mb-2">Splitwise CSV</h3>
         <p className="font-display italic text-sage mb-4">
-          Import your share of group expenses from a Splitwise export. Payments, non-EUR rows, and zero-share rows are
-          skipped. Re-importing the same file does not duplicate.
+          Imports only the rows where you owe — your personal share of group expenses you haven't paid yet. Rows where
+          you fronted cash for others are skipped (those reimbursements aren't real income, and the original spend is
+          already on your card). Payments, non-EUR rows, and zero-share rows are skipped too. Re-importing the same file
+          does not duplicate.
         </p>
 
         {!parsed && (

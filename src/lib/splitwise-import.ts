@@ -29,8 +29,12 @@ export interface ImportResult {
     payment: number;
     nonEur: number;
     duplicate: number;
+    paidForOthers: number;
     other: number;
   };
+  // Running total of what you fronted for others (positive shares, in cents).
+  // Not added to the ledger — surfaced as visibility only.
+  paidForOthersCents: number;
 }
 
 // --- CSV parsing (handles quoted fields with commas) ---
@@ -129,7 +133,8 @@ function rowHash(row: SplitwiseRow, userColumn: string): string {
 export function importSplitwiseRows(rows: SplitwiseRow[], opts: ImportOptions): ImportResult {
   const result: ImportResult = {
     imported: [],
-    skipped: { zero: 0, payment: 0, nonEur: 0, duplicate: 0, other: 0 },
+    skipped: { zero: 0, payment: 0, nonEur: 0, duplicate: 0, paidForOthers: 0, other: 0 },
+    paidForOthersCents: 0,
   };
 
   const state = useStore.getState();
@@ -152,6 +157,15 @@ export function importSplitwiseRows(rows: SplitwiseRow[], opts: ImportOptions): 
     const yourShare = Number.parseFloat(yourShareStr);
     if (!Number.isFinite(yourShare) || Math.abs(yourShare) < 0.005) {
       result.skipped.zero++;
+      continue;
+    }
+    // Splitwise share semantics:
+    //   negative = you owe (you consumed but haven't paid yet) → import as expense
+    //   positive = others owe you (you fronted cash, reimbursement coming) → skip
+    // Skipping positives avoids double-counting bills already in your card statement.
+    if (yourShare > 0) {
+      result.skipped.paidForOthers++;
+      result.paidForOthersCents += decimalToCents(yourShare);
       continue;
     }
     const hash = rowHash(row, opts.userColumn);

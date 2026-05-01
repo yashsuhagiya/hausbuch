@@ -81,11 +81,11 @@ describe("importSplitwiseRows — sign", () => {
     expect(aldi?.amount).toBe(-980); // -9.80 EUR in cents
   });
 
-  it("positive user-column → positive entry amount (income from overpayment)", () => {
+  it("positive user-column rows are skipped as paid-for-others (not imported as income)", () => {
     const { rows } = parseSplitwiseCSV(fixture);
     const result = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    const norma = result.imported.find((e) => e.note === "Norma");
-    expect(norma?.amount).toBe(483); // +4.83 EUR in cents
+    expect(result.imported.find((e) => e.note === "Norma")).toBeUndefined();
+    expect(result.skipped.paidForOthers).toBeGreaterThanOrEqual(1);
   });
 });
 
