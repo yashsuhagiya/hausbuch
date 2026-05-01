@@ -63,8 +63,11 @@ The production target is Vercel + Vercel Postgres + the subdomain `hausbuch.yash
 ## Known v1 limitations
 
 - **PWA service worker**: not installed yet. The app has a web manifest and is installable, but offline caching is deferred. `next-pwa` is not yet Turbopack-compatible (Next 16). When workbox + Turbopack ship together, add a service worker.
-- **PWA icons**: `public/icon-192.png` and `public/icon-512.png` are 1×1 placeholder PNGs. Replace with real icons before any user-facing release.
 - **Playwright host platform**: chromium binary doesn't support ubuntu26.04-x64. The E2E test runs on supported CI images (or any host where `pnpm dlx playwright install chromium` succeeds).
+
+## Icons
+
+The favicon, Apple touch icon, and PWA manifest icons are all generated from a single SVG mark by [scripts/generate-icons.mjs](scripts/generate-icons.mjs) — italic "H" in ink on paper with a rust underline, matching the brand. To regenerate after a brand tweak: `node scripts/generate-icons.mjs`. Outputs land in [src/app/icon.png](src/app/icon.png) (favicon), [src/app/apple-icon.png](src/app/apple-icon.png) (iOS home screen), and `public/icon-{192,512}.png` (Android / PWA manifest). Next.js auto-generates the corresponding `<link>` tags from the `src/app/` convention.
 
 ## Deferred
 
