@@ -20,13 +20,40 @@ Next.js 16 (App Router), React 19, TypeScript strict, Tailwind v4 with custom th
 
 - `/` → redirects to current month
 - `/m/[YYYY-MM]` → the month page (the dashboard)
-- `/settings` → recurring · categories · accounts · snapshots · data
+- `/settings` → sync · recurring · categories · accounts · snapshots · data
+- `/api/auth/[...all]` → Better Auth handler (sign in / out / session)
 
 Keyboard shortcuts on the month page: `j` previous month · `k` next month · `n` new entry.
 
 ## Storage
 
-Everything lives in `localStorage`, accessed via the flat module at [src/lib/storage.ts](src/lib/storage.ts). Each write captures the previous full snapshot in `hausbuch:backup` so the **Restore backup** button in Settings → Data can recover from a bad import. Schema is versioned via `runMigrations()` (no-op in v1).
+Two backends, swapped based on sign-in state ([src/lib/backend/](src/lib/backend/)):
+
+- **LocalBackend** ([local.ts](src/lib/backend/local.ts)) — wraps `localStorage` via [storage.ts](src/lib/storage.ts). Used when signed out. Each write also snapshots the previous state to `hausbuch:backup` so the **Restore backup** button can recover from a bad import.
+- **RemoteBackend** ([remote.ts](src/lib/backend/remote.ts)) — Postgres via Next.js server actions in [sync-actions.ts](src/lib/sync-actions.ts), authenticated through Better Auth. Used when signed in.
+
+When you sign in for the first time on a device that has local data, the store auto-migrates the localStorage snapshot up to your account in a single transaction (see `migrateFromLocalAction`). Mutations after that write to local first (optimistic UI) and reflect to Postgres in the background.
+
+Schema is versioned via `runMigrations()` for the local store; the Postgres schema lives in [prisma/schema.prisma](prisma/schema.prisma).
+
+## Local development with the database
+
+```bash
+docker compose up -d                # Postgres 17 on :5432
+pnpm prisma migrate dev             # apply schema
+cp .env.example .env                # then fill BETTER_AUTH_SECRET (openssl rand -base64 32)
+pnpm dev
+```
+
+## Deploy
+
+The production target is Vercel + Vercel Postgres + the subdomain `hausbuch.yashsuhagiya.com`.
+
+1. **Provision the DB**: in the Vercel dashboard, *Storage → Create database → Postgres*. `DATABASE_URL` is auto-injected into deployments.
+2. **Set auth secrets** in Vercel project env: `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), `BETTER_AUTH_URL=https://hausbuch.yashsuhagiya.com`. Optional: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` for Google sign-in.
+3. **Add the domain**: in Vercel project *Settings → Domains*, add `hausbuch.yashsuhagiya.com`. In your DNS, set a CNAME pointing to `cname.vercel-dns.com.`.
+4. **Run the schema migration** against the prod DB on first deploy: `pnpm prisma migrate deploy` (Vercel can run this in the build step via a `postinstall` hook, or run once manually with the prod `DATABASE_URL`).
+5. **Update Google OAuth redirect URIs** (if used) to include `https://hausbuch.yashsuhagiya.com/api/auth/callback/google`.
 
 ## Spec and plan
 
@@ -39,15 +66,15 @@ Everything lives in `localStorage`, accessed via the flat module at [src/lib/sto
 - **PWA icons**: `public/icon-192.png` and `public/icon-512.png` are 1×1 placeholder PNGs. Replace with real icons before any user-facing release.
 - **Playwright host platform**: chromium binary doesn't support ubuntu26.04-x64. The E2E test runs on supported CI images (or any host where `pnpm dlx playwright install chromium` succeeds).
 
-## Deferred (post-v1)
+## Deferred
 
 | Version | Item |
 |---|---|
-| v1.1 | CSV import (DKB / N26 / Sparkasse parsers) |
+| v2.1 | Offline write queue + reconnect drain (mutations made offline currently log-and-drop on server failure) |
+| v2.2 | Conflict toast when remote `updatedAt` overwrites a local edit (currently last-write-wins silently) |
 | v1.2 | Search and filter across all months |
 | v1.3 | Monthly close ritual — auto-generated narrative |
 | vNext | Eras (life chapters); UI for `chapterId` |
-| vNext | Cross-device sync (Postgres swap behind storage module) |
 | vFuture | Multi-user / joint mode |
 | vFuture | Receipt photo capture |
 | vFuture | Multi-currency |
