@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { evaluate } from "@/lib/evaluator";
 import { decimalToCents, formatEUR } from "@/lib/money";
 
@@ -10,18 +10,32 @@ interface Props {
 
 // Display glyph → character actually inserted into the field. The evaluator
 // expects ASCII `* /`; the chips show mathematical `× ÷` because that's what
-// users actually recognize.
+// users actually recognize. Parens come last — less common than arithmetic.
 const OPS: Array<{ label: string; insert: string; aria: string }> = [
   { label: "+", insert: "+", aria: "Plus" },
   { label: "−", insert: "-", aria: "Minus" },
   { label: "×", insert: "*", aria: "Times" },
   { label: "÷", insert: "/", aria: "Divide" },
+  { label: "(", insert: "(", aria: "Open paren" },
+  { label: ")", insert: ")", aria: "Close paren" },
 ];
 
 export function AmountField({ value, onChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const evaluated = useMemo(() => evaluate(value), [value]);
-  const cents = evaluated.ok ? decimalToCents(evaluated.value) : null;
+  const live = useMemo(() => {
+    const r = evaluate(value);
+    return r.ok ? decimalToCents(r.value) : null;
+  }, [value]);
+
+  // Sticky preview: hold the most recent valid evaluation so the chip doesn't
+  // flicker out during transient invalid states like "5+" between operands.
+  // Empty input is the only signal to reset — that's the user starting over.
+  const [sticky, setSticky] = useState<number | null>(null);
+  useEffect(() => {
+    if (value.trim() === "") setSticky(null);
+    else if (live !== null) setSticky(live);
+  }, [value, live]);
+  const cents = live ?? sticky;
 
   // Insert at the current caret position (or append if the input has no
   // selection — happens after we re-set value programmatically).
