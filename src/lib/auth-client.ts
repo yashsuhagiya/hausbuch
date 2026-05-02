@@ -3,8 +3,12 @@
 
 import { createAuthClient } from "better-auth/react";
 
-export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:3000",
-});
+// No explicit baseURL: better-auth defaults to window.location.origin, which
+// is exactly what we want everywhere — http://localhost:3000 in dev, the
+// real prod origin on Vercel. A hardcoded NEXT_PUBLIC_BETTER_AUTH_URL would
+// require keeping a client-visible env var in sync with the actual deploy
+// hostname, and getting it wrong yields a "Failed to fetch" with no
+// server-side log because the request never even leaves the browser.
+export const authClient = createAuthClient();
 
 export const { signIn, signUp, signOut, useSession } = authClient;

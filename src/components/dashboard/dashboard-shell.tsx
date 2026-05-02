@@ -4,6 +4,7 @@
 // click, recent-activity row click) so the user can drill in fast.
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { currentMonth } from "@/lib/date";
 import { DashboardHero } from "./hero";
 import { MonthsBar } from "./months-bar";
@@ -31,23 +32,36 @@ function readableMonth(m: string) {
 }
 
 export function DashboardShell() {
-  const now = currentMonth();
+  // Defer all time-and-store-dependent rendering until after mount.
+  // Without this, the route's pre-rendered HTML (built with `currentMonth()`
+  // frozen at build time, plus empty store defaults) disagrees with the
+  // client's first render — React #418 hydration mismatch. Server emits
+  // only the masthead skeleton; the client fills in the live view.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <main className="max-w-[1320px] mx-auto px-4 md:px-8 py-8 md:py-12">
       <header className="grid grid-cols-[1fr_auto] items-baseline gap-3 pb-4 border-b border-ink mb-10">
         <h1 className="font-display text-3xl md:text-5xl tracking-tight">Hausbuch.</h1>
-        <Link
-          href={`/m/${now}`}
-          className="font-mono text-[0.6rem] md:text-xs tracking-widest uppercase text-sage hover:text-ink whitespace-nowrap"
-        >
-          {readableMonth(now)} →
-        </Link>
+        {mounted && (
+          <Link
+            href={`/m/${currentMonth()}`}
+            className="font-mono text-[0.6rem] md:text-xs tracking-widest uppercase text-sage hover:text-ink whitespace-nowrap"
+          >
+            {readableMonth(currentMonth())} →
+          </Link>
+        )}
       </header>
 
-      <DashboardHero />
-      <MonthsBar />
-      <TopCategories />
-      <RecentActivity />
+      {mounted && (
+        <>
+          <DashboardHero />
+          <MonthsBar />
+          <TopCategories />
+          <RecentActivity />
+        </>
+      )}
 
       <Link
         href="/settings"
