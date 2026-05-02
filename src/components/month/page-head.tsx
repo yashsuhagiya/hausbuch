@@ -40,6 +40,14 @@ export function PageHead({ month }: { month: ISOMonth }) {
         <span className="hidden md:inline">← {readableMonth(prevMonth(month))}</span>
       </Link>
       <div className="text-center min-w-0">
+        {/* Masthead-style link back to the dashboard. Sits above the month
+            title so it reads like a magazine cover: publication name, then issue. */}
+        <Link
+          href="/"
+          className="block font-mono text-[0.55rem] md:text-[0.6rem] tracking-widest uppercase text-sage hover:text-ink mb-1"
+        >
+          ↑ Hausbuch
+        </Link>
         <h1 className="font-display text-3xl md:text-5xl tracking-tight">{readableMonth(month)}</h1>
       </div>
       <div className="text-right">
