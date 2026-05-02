@@ -31,4 +31,9 @@ describe("evaluate", () => {
   it("ignores whitespace", () => {
     expect(evaluate("  1   +   2  ")).toEqual({ ok: true, value: 3 });
   });
+  it("accepts comma as decimal separator (de-DE keyboards)", () => {
+    expect(evaluate("5,72")).toEqual({ ok: true, value: 5.72 });
+    expect(evaluate("5,72 + 3,28")).toEqual({ ok: true, value: 9 });
+    expect(evaluate("12,5 / 2")).toEqual({ ok: true, value: 6.25 });
+  });
 });

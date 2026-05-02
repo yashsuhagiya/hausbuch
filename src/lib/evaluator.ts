@@ -22,9 +22,11 @@ export function evaluate(input: string): EvalResult {
   function parseNumber(): number | null {
     skip();
     const start = pos;
-    while (pos < src.length && /[0-9.]/.test(src[pos])) pos++;
+    // Accept both `.` and `,` inside a number — German keyboards type `5,72`,
+    // English keyboards type `5.72`. We normalize to `.` before parseFloat.
+    while (pos < src.length && /[0-9.,]/.test(src[pos])) pos++;
     if (start === pos) return null;
-    const n = Number.parseFloat(src.slice(start, pos));
+    const n = Number.parseFloat(src.slice(start, pos).replace(",", "."));
     return Number.isFinite(n) ? n : null;
   }
 
