@@ -1,23 +1,18 @@
-// Singleton Prisma client for server-side use.
-// Avoids hot-reload connection storms in dev.
-//
-// Prisma v7's new prisma-client generator requires a driver adapter.
-// We use @prisma/adapter-pg (PostgreSQL) configured from DATABASE_URL.
-//
-// The exported `prisma` is a Proxy that lazy-initializes on first property
-// access. Eager initialization would require DATABASE_URL at module-import
-// time, which breaks any code path (tests, type-only imports, build analysis)
-// that transitively imports this file without intending to actually query.
-
 import { PrismaPg } from "@prisma/adapter-pg";
+import { withAccelerate } from "@prisma/extension-accelerate";
 import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function makeClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is not set");
-  const adapter = new PrismaPg({ connectionString });
+  if (process.env.PRISMA_DATABASE_URL) {
+    return new PrismaClient({ accelerateUrl: process.env.PRISMA_DATABASE_URL }).$extends(
+      withAccelerate(),
+    ) as unknown as PrismaClient;
+  }
+  const url = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  if (!url) throw new Error("No database URL set (PRISMA_DATABASE_URL / POSTGRES_URL / DATABASE_URL)");
+  const adapter = new PrismaPg({ connectionString: url, max: 1 });
   return new PrismaClient({ adapter });
 }
 
