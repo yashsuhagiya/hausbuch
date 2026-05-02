@@ -1,7 +1,3 @@
-// Backend interface — abstracts where Hausbuch data lives.
-// LocalBackend reads/writes browser localStorage (single-device, offline-first).
-// RemoteBackend reads/writes Postgres via server actions (signed-in, multi-device).
-
 import type { Account, Category, Entry, ID, ISOMonth, Recurring, Snapshot } from "../types";
 
 export interface BackendSnapshot {

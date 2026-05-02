@@ -43,6 +43,10 @@ export const auth = betterAuth({
   trustedOrigins,
   secret: process.env.BETTER_AUTH_SECRET,
   emailAndPassword: { enabled: true },
+  session: {
+    expiresIn: 60 * 60 * 24 * 365,
+    updateAge: 60 * 60 * 24,
+  },
   socialProviders: googleConfigured
     ? {
         google: {

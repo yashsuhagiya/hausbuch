@@ -134,14 +134,8 @@ export async function markPostedAction(month: ISOMonth): Promise<void> {
   });
 }
 
-/**
- * One-shot bulk upload of a localStorage snapshot into the user's Postgres
- * account. Idempotent: each row upserts by id, so running the migration twice
- * (e.g. user clicked twice, or partial failure) is safe.
- *
- * This runs inside a single transaction so a partial failure doesn't leave
- * the account half-migrated.
- */
+// Bulk upserts a snapshot into the user's account. Idempotent (upsert by id),
+// transactional. Used to seed defaults on first sign-in.
 export async function migrateFromLocalAction(snapshot: BackendSnapshot): Promise<void> {
   const userId = await requireUserId();
 

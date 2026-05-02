@@ -1,19 +1,30 @@
 "use client";
 import { useEffect } from "react";
-import { useSession } from "@/lib/auth-client";
 import { useStore } from "@/lib/store";
 
 export function StoreHydrator() {
   const hydrate = useStore((s) => s.hydrate);
-  const { data: session, isPending } = useSession();
+  const refresh = useStore((s) => s.refresh);
 
-  // Wait for session resolution before deciding which backend to pull from —
-  // hydrating eagerly with signedIn=false would mean a brief flash of local
-  // data on signed-in devices, then a second pull. One hydrate, after we know.
   useEffect(() => {
-    if (isPending) return;
-    hydrate(Boolean(session?.user?.id));
-  }, [hydrate, isPending, session?.user?.id]);
+    hydrate();
+  }, [hydrate]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const onFocus = () => refresh();
+    const onOnline = () => refresh();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("online", onOnline);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [refresh]);
 
   return null;
 }
