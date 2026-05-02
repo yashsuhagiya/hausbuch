@@ -17,13 +17,18 @@ export function SyncSection() {
     setBusy(true);
     setMsg(null);
     try {
-      if (mode === "up") {
-        await signUp.email({ email, password, name: name || email.split("@")[0] });
-        setMsg("Account created. You're signed in.");
-      } else {
-        await signIn.email({ email, password });
-        setMsg("Signed in.");
+      // better-auth returns { data, error } instead of throwing on auth
+      // failures, so we check `error` explicitly. Without this, a 403 from
+      // origin/CSRF rejection looks like success in the UI.
+      const res =
+        mode === "up"
+          ? await signUp.email({ email, password, name: name || email.split("@")[0] })
+          : await signIn.email({ email, password });
+      if (res.error) {
+        const detail = res.error.message ?? `HTTP ${res.error.status ?? "?"}`;
+        throw new Error(detail);
       }
+      setMsg(mode === "up" ? "Account created. You're signed in." : "Signed in.");
       setEmail("");
       setPassword("");
       setName("");
