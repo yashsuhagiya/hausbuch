@@ -134,88 +134,84 @@ export async function markPostedAction(month: ISOMonth): Promise<void> {
   });
 }
 
-// Bulk upserts a snapshot into the user's account. Idempotent (upsert by id),
-// transactional. Used to seed defaults on first sign-in.
+// Bulk upserts a snapshot into the user's account. Idempotent (upsert by id).
+// No transaction — Prisma Postgres / pgbouncer-fronted endpoints don't reliably
+// support interactive transactions (P2028).
 export async function migrateFromLocalAction(snapshot: BackendSnapshot): Promise<void> {
   const userId = await requireUserId();
 
-  await prisma.$transaction(async (tx) => {
-    // Categories and accounts first — entries reference them, and while we
-    // don't enforce FKs to those, ordering keeps things sane for any future
-    // constraint we add.
-    for (const c of snapshot.categories) {
-      await tx.category.upsert({
-        where: { id: c.id },
-        create: { id: c.id, userId, label: c.label, kind: c.kind, color: c.color ?? null, archived: c.archived },
-        update: { label: c.label, kind: c.kind, color: c.color ?? null, archived: c.archived },
-      });
-    }
-    for (const a of snapshot.accounts) {
-      await tx.bookAccount.upsert({
-        where: { id: a.id },
-        create: { id: a.id, userId, label: a.label, kind: a.kind, archived: a.archived },
-        update: { label: a.label, kind: a.kind, archived: a.archived },
-      });
-    }
-    for (const r of snapshot.recurring) {
-      await tx.recurring.upsert({
-        where: { id: r.id },
-        create: {
-          id: r.id,
-          userId,
-          label: r.label,
-          amount: r.amount,
-          categoryId: r.categoryId,
-          accountId: r.accountId,
-          dayOfMonth: r.dayOfMonth,
-          startMonth: r.startMonth,
-          endMonth: r.endMonth ?? null,
-        },
-        update: {
-          label: r.label,
-          amount: r.amount,
-          categoryId: r.categoryId,
-          accountId: r.accountId,
-          dayOfMonth: r.dayOfMonth,
-          startMonth: r.startMonth,
-          endMonth: r.endMonth ?? null,
-        },
-      });
-    }
-    for (const e of snapshot.entries) {
-      const data = {
-        date: e.date,
-        amount: e.amount,
-        categoryId: e.categoryId,
-        accountId: e.accountId,
-        note: e.note ?? null,
-        source: e.source,
-        recurringId: e.recurringId ?? null,
-        postedForMonth: e.postedForMonth ?? null,
-        chapterId: e.chapterId,
-        importHash: e.importHash ?? null,
-      };
-      await tx.entry.upsert({
-        where: { id: e.id },
-        create: { id: e.id, userId, ...data },
-        update: data,
-      });
-    }
-    for (const s of snapshot.snapshots) {
-      await tx.snapshot.upsert({
-        where: { id: s.id },
-        create: { id: s.id, userId, date: s.date, accountId: s.accountId, balance: s.balance },
-        update: { date: s.date, accountId: s.accountId, balance: s.balance },
-      });
-    }
-    for (const m of snapshot.postedMonths) {
-      await tx.postedMonth.upsert({
-        where: { userId_month: { userId, month: m } },
-        create: { userId, month: m },
-        update: {},
-      });
-    }
-  });
+  for (const c of snapshot.categories) {
+    await prisma.category.upsert({
+      where: { id: c.id },
+      create: { id: c.id, userId, label: c.label, kind: c.kind, color: c.color ?? null, archived: c.archived },
+      update: { label: c.label, kind: c.kind, color: c.color ?? null, archived: c.archived },
+    });
+  }
+  for (const a of snapshot.accounts) {
+    await prisma.bookAccount.upsert({
+      where: { id: a.id },
+      create: { id: a.id, userId, label: a.label, kind: a.kind, archived: a.archived },
+      update: { label: a.label, kind: a.kind, archived: a.archived },
+    });
+  }
+  for (const r of snapshot.recurring) {
+    await prisma.recurring.upsert({
+      where: { id: r.id },
+      create: {
+        id: r.id,
+        userId,
+        label: r.label,
+        amount: r.amount,
+        categoryId: r.categoryId,
+        accountId: r.accountId,
+        dayOfMonth: r.dayOfMonth,
+        startMonth: r.startMonth,
+        endMonth: r.endMonth ?? null,
+      },
+      update: {
+        label: r.label,
+        amount: r.amount,
+        categoryId: r.categoryId,
+        accountId: r.accountId,
+        dayOfMonth: r.dayOfMonth,
+        startMonth: r.startMonth,
+        endMonth: r.endMonth ?? null,
+      },
+    });
+  }
+  for (const e of snapshot.entries) {
+    const data = {
+      date: e.date,
+      amount: e.amount,
+      categoryId: e.categoryId,
+      accountId: e.accountId,
+      note: e.note ?? null,
+      source: e.source,
+      recurringId: e.recurringId ?? null,
+      postedForMonth: e.postedForMonth ?? null,
+      chapterId: e.chapterId,
+      importHash: e.importHash ?? null,
+    };
+    await prisma.entry.upsert({
+      where: { id: e.id },
+      create: { id: e.id, userId, ...data },
+      update: data,
+    });
+  }
+  for (const s of snapshot.snapshots) {
+    await prisma.snapshot.upsert({
+      where: { id: s.id },
+      create: { id: s.id, userId, date: s.date, accountId: s.accountId, balance: s.balance },
+      update: { date: s.date, accountId: s.accountId, balance: s.balance },
+    });
+  }
+  for (const m of snapshot.postedMonths) {
+    await prisma.postedMonth.upsert({
+      where: { userId_month: { userId, month: m } },
+      create: { userId, month: m },
+      update: {},
+    });
+  }
 }
 
 // Prisma rows carry `userId` + timestamps that the domain types don't expose;
