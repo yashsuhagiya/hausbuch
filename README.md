@@ -27,14 +27,15 @@ Keyboard shortcuts on the month page: `j` previous month · `k` next month · `n
 
 ## Storage
 
-Two backends, swapped based on sign-in state ([src/lib/backend/](src/lib/backend/)):
+The store talks to a `Backend` interface ([src/lib/backend/types.ts](src/lib/backend/types.ts)). The active adapter is selected via `getBackend()` / `setBackend()` ([src/lib/backend/index.ts](src/lib/backend/index.ts)) — defaulting to:
 
-- **LocalBackend** ([local.ts](src/lib/backend/local.ts)) — wraps `localStorage` via [storage.ts](src/lib/storage.ts). Used when signed out. Each write also snapshots the previous state to `hausbuch:backup` so the **Restore backup** button can recover from a bad import.
-- **RemoteBackend** ([remote.ts](src/lib/backend/remote.ts)) — Postgres via Next.js server actions in [sync-actions.ts](src/lib/sync-actions.ts), authenticated through Better Auth. Used when signed in.
+- **RemoteBackend** ([remote.ts](src/lib/backend/remote.ts)) — Postgres via Next.js server actions in [sync-actions.ts](src/lib/sync-actions.ts), which delegate to the typed repository in [repo.ts](src/lib/repo.ts). Authenticated through Better Auth.
 
-When you sign in for the first time on a device that has local data, the store auto-migrates the localStorage snapshot up to your account in a single transaction (see `migrateFromLocalAction`). Mutations after that write to local first (optimistic UI) and reflect to Postgres in the background.
+A `LocalBackend` (offline-capable, localStorage-backed) is planned but not implemented in v1; the seam is in place so it can drop in without touching the store. Tests inject an in-memory fake backend via `setBackend()` to exercise store mutations without a database.
 
-Schema is versioned via `runMigrations()` for the local store; the Postgres schema lives in [prisma/schema.prisma](prisma/schema.prisma).
+On first hydration, an empty account is seeded with `SEED_CATEGORIES` / `SEED_ACCOUNTS` via `Backend.migrate()`. Mutations are optimistic (local state updates immediately) and reflected to Postgres in the background; sync status is exposed via the store's `syncStatus` and `pendingWrites`.
+
+The Postgres schema lives in [prisma/schema.prisma](prisma/schema.prisma).
 
 ## Local development with the database
 
