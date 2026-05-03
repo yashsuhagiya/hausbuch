@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { entriesInMonth } from "@/lib/dashboard-stats";
-import { postRecurringThrough, projectRecurringFor } from "@/lib/recurring";
+import { planRecurringThrough, postRecurringThrough, projectRecurringFor } from "@/lib/recurring";
 import { useStore } from "@/lib/store";
-import type { Recurring } from "@/lib/types";
+import type { Entry, Recurring } from "@/lib/types";
 
 beforeEach(() => {
   useStore.getState().reset();
@@ -49,6 +49,46 @@ describe("postRecurringThrough", () => {
     const e = entriesInMonth(useStore.getState().entries, "2026-02").find((x) => x.recurringId === "r2");
     expect(e).toBeTruthy();
     expect(e?.date).toBe("2026-02-28");
+  });
+});
+
+describe("planRecurringThrough (pure)", () => {
+  it("plans one entry per month inclusive", () => {
+    const plan = planRecurringThrough([rent], new Set(), [], "2026-03");
+    expect(plan.entries).toHaveLength(3);
+    expect(plan.monthsToMark).toEqual(["2026-01", "2026-02", "2026-03"]);
+  });
+
+  it("skips months already in postedMonths", () => {
+    const plan = planRecurringThrough([rent], new Set(["2026-02"]), [], "2026-03");
+    expect(plan.entries).toHaveLength(2);
+    expect(plan.monthsToMark).toEqual(["2026-01", "2026-03"]);
+  });
+
+  it("skips entries already posted within an open month", () => {
+    const existing: Entry[] = [
+      {
+        id: "e-feb",
+        date: "2026-02-01",
+        amount: -62000,
+        categoryId: "cat-housing",
+        accountId: "acc-giro",
+        source: "recurring",
+        recurringId: "r-rent",
+        postedForMonth: "2026-02",
+        chapterId: "current",
+      },
+    ];
+    const plan = planRecurringThrough([rent], new Set(), existing, "2026-03");
+    expect(plan.entries).toHaveLength(2);
+    expect(plan.entries.map((e) => e.postedForMonth)).toEqual(["2026-01", "2026-03"]);
+    expect(plan.monthsToMark).toEqual(["2026-01", "2026-02", "2026-03"]);
+  });
+
+  it("returns empty plan when no recurring rules exist", () => {
+    const plan = planRecurringThrough([], new Set(), [], "2026-12");
+    expect(plan.entries).toEqual([]);
+    expect(plan.monthsToMark).toEqual([]);
   });
 });
 
