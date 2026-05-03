@@ -46,21 +46,19 @@ export function computeStats(entries: Entry[]) {
   return { in: inc, out, net: inc + out };
 }
 
-let inflight = 0;
-
 export const useStore = create<State>((set, get) => {
   function reflect(p: Promise<void>) {
-    inflight++;
-    set({ pendingWrites: inflight, syncStatus: "syncing" });
+    const next = get().pendingWrites + 1;
+    set({ pendingWrites: next, syncStatus: "syncing" });
     p.then(
       () => {
-        inflight--;
-        set({ pendingWrites: inflight, syncStatus: inflight === 0 ? "ok" : "syncing" });
+        const after = get().pendingWrites - 1;
+        set({ pendingWrites: after, syncStatus: after === 0 ? "ok" : "syncing" });
       },
       (err) => {
         console.error("[sync] write failed:", err);
-        inflight--;
-        set({ pendingWrites: inflight, syncStatus: "failing" });
+        const after = get().pendingWrites - 1;
+        set({ pendingWrites: after, syncStatus: "failing" });
       },
     );
   }
@@ -117,7 +115,7 @@ export const useStore = create<State>((set, get) => {
           accounts: snap.accounts,
           snapshots: snap.snapshots,
           postedMonths: new Set(snap.postedMonths),
-          syncStatus: inflight === 0 ? "ok" : "syncing",
+          syncStatus: get().pendingWrites === 0 ? "ok" : "syncing",
         });
       } catch (err) {
         console.error("[refresh] failed:", err);
@@ -126,7 +124,6 @@ export const useStore = create<State>((set, get) => {
     },
 
     reset: () => {
-      inflight = 0;
       set({
         hydrated: false,
         syncStatus: "idle",
