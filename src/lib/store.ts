@@ -1,9 +1,8 @@
 import { create } from "zustand";
-import { remoteBackend } from "./backend/remote";
+import { getBackend } from "./backend";
 import { newId } from "./ids";
 import { postRecurringForCurrent } from "./recurring";
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from "./seed";
-import { migrateFromLocalAction } from "./sync-actions";
 import type { Account, Category, Entry, ID, ISOMonth, Recurring, Snapshot } from "./types";
 
 export type SyncStatus = "idle" | "syncing" | "ok" | "failing";
@@ -67,9 +66,10 @@ export const useStore = create<State>((set, get) => {
 
     hydrate: async () => {
       try {
-        let snap = await remoteBackend.pull();
+        const backend = getBackend();
+        let snap = await backend.pull();
         if (snap.categories.length === 0 && snap.accounts.length === 0) {
-          await migrateFromLocalAction({
+          await backend.migrate({
             entries: [],
             recurring: [],
             categories: SEED_CATEGORIES,
@@ -77,7 +77,7 @@ export const useStore = create<State>((set, get) => {
             snapshots: [],
             postedMonths: [],
           });
-          snap = await remoteBackend.pull();
+          snap = await backend.pull();
         }
         set({
           hydrated: true,
@@ -98,7 +98,7 @@ export const useStore = create<State>((set, get) => {
 
     refresh: async () => {
       try {
-        const snap = await remoteBackend.pull();
+        const snap = await getBackend().pull();
         set({
           entries: snap.entries,
           recurring: snap.recurring,
@@ -131,7 +131,7 @@ export const useStore = create<State>((set, get) => {
     addEntry: (e) => {
       const created: Entry = { id: newId(), ...e };
       set((s) => ({ entries: [...s.entries, created] }));
-      reflect(remoteBackend.upsertEntry(created));
+      reflect(getBackend().upsertEntry(created));
       return created;
     },
     updateEntry: (id, patch) => {
@@ -144,39 +144,39 @@ export const useStore = create<State>((set, get) => {
           return u;
         }),
       }));
-      if (updated) reflect(remoteBackend.upsertEntry(updated));
+      if (updated) reflect(getBackend().upsertEntry(updated));
     },
     deleteEntry: (id) => {
       set((s) => ({ entries: s.entries.filter((x) => x.id !== id) }));
-      reflect(remoteBackend.deleteEntry(id));
+      reflect(getBackend().deleteEntry(id));
     },
 
     upsertRecurring: (r) => {
       set((s) => ({ recurring: [...s.recurring.filter((x) => x.id !== r.id), r] }));
-      reflect(remoteBackend.upsertRecurring(r));
+      reflect(getBackend().upsertRecurring(r));
     },
     deleteRecurring: (id) => {
       set((s) => ({ recurring: s.recurring.filter((x) => x.id !== id) }));
-      reflect(remoteBackend.deleteRecurring(id));
+      reflect(getBackend().deleteRecurring(id));
     },
 
     upsertCategory: (c) => {
       set((s) => ({ categories: [...s.categories.filter((x) => x.id !== c.id), c] }));
-      reflect(remoteBackend.upsertCategory(c));
+      reflect(getBackend().upsertCategory(c));
     },
     upsertAccount: (a) => {
       set((s) => ({ accounts: [...s.accounts.filter((x) => x.id !== a.id), a] }));
-      reflect(remoteBackend.upsertAccount(a));
+      reflect(getBackend().upsertAccount(a));
     },
     addSnapshot: (s) => {
       const created: Snapshot = { id: newId(), ...s };
       set((st) => ({ snapshots: [...st.snapshots, created] }));
-      reflect(remoteBackend.addSnapshot(created));
+      reflect(getBackend().addSnapshot(created));
     },
 
     markPosted: (m) => {
       set((s) => ({ postedMonths: new Set(s.postedMonths).add(m) }));
-      reflect(remoteBackend.markPosted(m));
+      reflect(getBackend().markPosted(m));
     },
   };
 });

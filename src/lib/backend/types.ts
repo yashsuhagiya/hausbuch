@@ -26,4 +26,7 @@ export interface Backend {
   addSnapshot(snapshot: Snapshot): Promise<void>;
 
   markPosted(month: ISOMonth): Promise<void>;
+
+  /** Bulk-upsert a snapshot (used to seed an empty account or migrate local data). */
+  migrate(snapshot: BackendSnapshot): Promise<void>;
 }

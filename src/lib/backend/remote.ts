@@ -7,6 +7,7 @@ import {
   deleteEntryAction,
   deleteRecurringAction,
   markPostedAction,
+  migrateFromLocalAction,
   pullSnapshot,
   upsertAccountAction,
   upsertCategoryAction,
@@ -51,5 +52,9 @@ export const remoteBackend: Backend = {
 
   async markPosted(m: ISOMonth): Promise<void> {
     await markPostedAction(m);
+  },
+
+  async migrate(snapshot: BackendSnapshot): Promise<void> {
+    await migrateFromLocalAction(snapshot);
   },
 };
