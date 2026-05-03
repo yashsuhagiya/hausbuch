@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeStats } from "@/lib/store";
+import { computeStats } from "@/lib/dashboard-stats";
 
 const e = (amount: number) => ({
   id: "x",

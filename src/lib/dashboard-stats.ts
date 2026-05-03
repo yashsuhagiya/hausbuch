@@ -4,6 +4,22 @@
 import { monthOf, monthRange, prevMonth } from "./date";
 import type { Category, Entry, ISOMonth } from "./types";
 
+/** Income / expense / net split for an arbitrary entry slice. */
+export function computeStats(entries: Entry[]): { in: number; out: number; net: number } {
+  let income = 0;
+  let expense = 0;
+  for (const e of entries) {
+    if (e.amount > 0) income += e.amount;
+    else expense += e.amount;
+  }
+  return { in: income, out: expense, net: income + expense };
+}
+
+/** Filter to entries whose date falls in the given ISO month. */
+export function entriesInMonth(entries: Entry[], month: ISOMonth): Entry[] {
+  return entries.filter((e) => monthOf(e.date) === month);
+}
+
 export interface MonthTotal {
   month: ISOMonth;
   income: number; // signed cents (positive)

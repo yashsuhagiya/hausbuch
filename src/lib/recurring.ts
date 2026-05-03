@@ -1,3 +1,4 @@
+import { entriesInMonth } from "./dashboard-stats";
 import { clampDayOfMonth, currentMonth, monthRange } from "./date";
 import { useStore } from "./store";
 import type { Entry, ISOMonth, Recurring } from "./types";
@@ -40,7 +41,7 @@ export function postRecurringThrough(through: ISOMonth): void {
     const live = useStore.getState();
     if (live.postedMonths.has(m)) continue;
 
-    const existing = live.entriesForMonth(m);
+    const existing = entriesInMonth(live.entries, m);
     for (const r of recs) {
       if (!activeFor(r, m)) continue;
       const already = existing.some((e) => e.recurringId === r.id && e.postedForMonth === m);

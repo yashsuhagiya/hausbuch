@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { entriesInMonth } from "@/lib/dashboard-stats";
 import { postRecurringThrough, projectRecurringFor } from "@/lib/recurring";
 import { useStore } from "@/lib/store";
 import type { Recurring } from "@/lib/types";
@@ -21,34 +22,31 @@ describe("postRecurringThrough", () => {
   it("posts an entry per month inclusive", () => {
     useStore.getState().upsertRecurring(rent);
     postRecurringThrough("2026-03");
-    expect(useStore.getState().entriesForMonth("2026-01")).toHaveLength(1);
-    expect(useStore.getState().entriesForMonth("2026-02")).toHaveLength(1);
-    expect(useStore.getState().entriesForMonth("2026-03")).toHaveLength(1);
-    expect(useStore.getState().entriesForMonth("2026-04")).toHaveLength(0);
+    expect(entriesInMonth(useStore.getState().entries, "2026-01")).toHaveLength(1);
+    expect(entriesInMonth(useStore.getState().entries, "2026-02")).toHaveLength(1);
+    expect(entriesInMonth(useStore.getState().entries, "2026-03")).toHaveLength(1);
+    expect(entriesInMonth(useStore.getState().entries, "2026-04")).toHaveLength(0);
   });
 
   it("is idempotent — running twice does not duplicate", () => {
     useStore.getState().upsertRecurring(rent);
     postRecurringThrough("2026-03");
     postRecurringThrough("2026-03");
-    expect(useStore.getState().entriesForMonth("2026-02")).toHaveLength(1);
+    expect(entriesInMonth(useStore.getState().entries, "2026-02")).toHaveLength(1);
   });
 
   it("respects endMonth (exclusive)", () => {
     useStore.getState().upsertRecurring({ ...rent, endMonth: "2026-03" });
     postRecurringThrough("2026-04");
-    expect(useStore.getState().entriesForMonth("2026-03")).toHaveLength(0); // endMonth exclusive
-    expect(useStore.getState().entriesForMonth("2026-02")).toHaveLength(1);
-    expect(useStore.getState().entriesForMonth("2026-01")).toHaveLength(1);
+    expect(entriesInMonth(useStore.getState().entries, "2026-03")).toHaveLength(0); // endMonth exclusive
+    expect(entriesInMonth(useStore.getState().entries, "2026-02")).toHaveLength(1);
+    expect(entriesInMonth(useStore.getState().entries, "2026-01")).toHaveLength(1);
   });
 
   it("clamps day 31 to month end (Feb non-leap = 28)", () => {
     useStore.getState().upsertRecurring({ ...rent, id: "r2", dayOfMonth: 31 });
     postRecurringThrough("2026-02");
-    const e = useStore
-      .getState()
-      .entriesForMonth("2026-02")
-      .find((x) => x.recurringId === "r2");
+    const e = entriesInMonth(useStore.getState().entries, "2026-02").find((x) => x.recurringId === "r2");
     expect(e).toBeTruthy();
     expect(e?.date).toBe("2026-02-28");
   });
@@ -66,7 +64,7 @@ describe("projectRecurringFor (future months)", () => {
   it("does not write to storage", () => {
     useStore.getState().upsertRecurring(rent);
     projectRecurringFor("2099-06");
-    expect(useStore.getState().entriesForMonth("2099-06")).toHaveLength(0);
+    expect(entriesInMonth(useStore.getState().entries, "2099-06")).toHaveLength(0);
   });
 
   it("returns empty for a posted month (no need to project)", () => {

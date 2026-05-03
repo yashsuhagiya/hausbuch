@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { remoteBackend } from "./backend/remote";
-import { monthOf } from "./date";
 import { newId } from "./ids";
 import { postRecurringForCurrent } from "./recurring";
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from "./seed";
@@ -36,14 +35,6 @@ interface State {
   addSnapshot: (s: Omit<Snapshot, "id">) => void;
 
   markPosted: (m: ISOMonth) => void;
-
-  entriesForMonth: (m: ISOMonth) => Entry[];
-}
-
-export function computeStats(entries: Entry[]) {
-  const inc = entries.filter((e) => e.amount > 0).reduce((s, e) => s + e.amount, 0);
-  const out = entries.filter((e) => e.amount < 0).reduce((s, e) => s + e.amount, 0);
-  return { in: inc, out, net: inc + out };
 }
 
 export const useStore = create<State>((set, get) => {
@@ -187,7 +178,5 @@ export const useStore = create<State>((set, get) => {
       set((s) => ({ postedMonths: new Set(s.postedMonths).add(m) }));
       reflect(remoteBackend.markPosted(m));
     },
-
-    entriesForMonth: (m) => get().entries.filter((e) => monthOf(e.date) === m),
   };
 });
