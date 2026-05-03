@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { currentMonth } from "@/lib/date";
+import { signAmount } from "@/lib/entry";
 import { newId } from "@/lib/ids";
 import { decimalToCents, formatEUR } from "@/lib/money";
 import { useStore } from "@/lib/store";
@@ -111,9 +112,8 @@ function RecurringEditor({ initial, isNew, onSave, onDelete, onCancel }: EditorP
 
   function save() {
     const cat = cats.find((c) => c.id === r.categoryId);
-    const sign = cat?.kind === "income" ? 1 : -1;
     const cents = decimalToCents(Number.parseFloat(amountStr) || 0);
-    onSave({ ...r, amount: cents * sign });
+    onSave({ ...r, amount: signAmount(cents, cat) });
   }
 
   return (

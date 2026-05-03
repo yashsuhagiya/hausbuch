@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AmountField } from "@/components/entry-sheet/amount-field";
 import { Chips } from "@/components/entry-sheet/chips";
 import { todayISO } from "@/lib/date";
+import { signAmount } from "@/lib/entry";
 import { evaluate } from "@/lib/evaluator";
 import { decimalToCents } from "@/lib/money";
 import { useStore } from "@/lib/store";
@@ -53,12 +54,11 @@ export function EntrySheet({ open, initial, defaultDate, onClose }: Props) {
   const absCents = evaluated.ok ? decimalToCents(evaluated.value) : null;
 
   const cat = categories.find((c) => c.id === categoryId);
-  const sign = cat?.kind === "income" ? 1 : -1;
   const canSave = absCents !== null && absCents > 0 && Boolean(categoryId) && Boolean(accountId) && Boolean(date);
 
   function save() {
     if (!canSave || absCents === null) return;
-    const signed = absCents * sign;
+    const signed = signAmount(absCents, cat);
     if (initial) {
       updateEntry(initial.id, {
         amount: signed,
