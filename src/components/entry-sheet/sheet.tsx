@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AmountField } from "@/components/entry-sheet/amount-field";
 import { Chips } from "@/components/entry-sheet/chips";
 import { todayISO } from "@/lib/date";
-import { signAmount } from "@/lib/entry";
+import { createBlankEntry, signAmount } from "@/lib/entry";
 import { evaluate } from "@/lib/evaluator";
 import { decimalToCents } from "@/lib/money";
 import { useStore } from "@/lib/store";
@@ -69,13 +69,9 @@ export function EntrySheet({ open, initial, defaultDate, onClose }: Props) {
       });
     } else {
       addEntry({
-        date,
+        ...createBlankEntry(categories, accounts, { date, categoryId, accountId }),
         amount: signed,
-        categoryId,
-        accountId,
         note: note.trim() || undefined,
-        source: "manual",
-        chapterId: "current",
       });
     }
     onClose();

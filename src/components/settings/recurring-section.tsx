@@ -1,8 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { currentMonth } from "@/lib/date";
-import { signAmount } from "@/lib/entry";
-import { newId } from "@/lib/ids";
+import { createBlankRecurring, signAmount } from "@/lib/entry";
 import { decimalToCents, formatEUR } from "@/lib/money";
 import { useStore } from "@/lib/store";
 import type { Recurring } from "@/lib/types";
@@ -17,18 +15,6 @@ export function RecurringSection() {
   const [editing, setEditing] = useState<Recurring | null>(null);
   const [isNew, setIsNew] = useState(false);
 
-  function blank(): Recurring {
-    return {
-      id: newId(),
-      label: "",
-      amount: 0,
-      categoryId: categories[0]?.id ?? "",
-      accountId: accounts[0]?.id ?? "",
-      dayOfMonth: 1,
-      startMonth: currentMonth(),
-    };
-  }
-
   return (
     <section className="mb-12">
       <header className="flex justify-between items-baseline mb-4">
@@ -36,7 +22,7 @@ export function RecurringSection() {
         <button
           type="button"
           onClick={() => {
-            setEditing(blank());
+            setEditing(createBlankRecurring(categories, accounts));
             setIsNew(true);
           }}
           className="font-mono text-xs uppercase tracking-widest text-rust border border-rust px-3 py-1"
