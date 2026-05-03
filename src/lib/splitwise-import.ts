@@ -1,6 +1,5 @@
 import { decimalToCents } from "./money";
 import { mapSplitwiseCategory } from "./splitwise-categories";
-import { useStore } from "./store";
 import type { Entry, ID, ISODate } from "./types";
 
 export interface SplitwiseRow {
@@ -22,8 +21,9 @@ export interface ImportOptions {
   accountId: ID;
 }
 
-export interface ImportResult {
-  imported: Entry[];
+export interface ImportPlan {
+  /** Entries ready to be added to the ledger; ids will be assigned at commit time. */
+  entries: Omit<Entry, "id">[];
   skipped: {
     zero: number;
     payment: number;
@@ -105,16 +105,7 @@ export function parseSplitwiseCSV(raw: string): ParsedSplitwise {
   return { members, rows };
 }
 
-// --- Hashing for idempotency ---
-async function sha256Hex(input: string): Promise<string> {
-  const enc = new TextEncoder().encode(input);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-// Sync hash — stable across runs, simple FNV-1a (sufficient for dedup, not cryptographic).
+// FNV-1a — non-cryptographic dedup hash, stable across runs.
 function fnv1a(input: string): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {
@@ -129,34 +120,46 @@ function rowHash(row: SplitwiseRow, userColumn: string): string {
   return fnv1a(`${row.date}|${row.description}|${yourShare}|${row.category}`);
 }
 
-// --- Import runner ---
-export function importSplitwiseRows(rows: SplitwiseRow[], opts: ImportOptions): ImportResult {
-  const result: ImportResult = {
-    imported: [],
+/**
+ * Compute the import plan: which Splitwise rows should become Entries,
+ * which should be skipped (and why), and how much the user fronted
+ * for others as flavor text. Pure: takes existing entries, returns a
+ * plan; does not touch the store.
+ *
+ * The caller decides whether to commit (currently the data-section
+ * UI runs commitImportPlan unconditionally, but a preview surface
+ * could now live between plan and commit).
+ */
+export function planSplitwiseImport(
+  rows: SplitwiseRow[],
+  opts: ImportOptions,
+  existingEntries: Entry[],
+): ImportPlan {
+  const plan: ImportPlan = {
+    entries: [],
     skipped: { zero: 0, payment: 0, nonEur: 0, duplicate: 0, paidForOthers: 0, other: 0 },
     paidForOthersCents: 0,
   };
 
-  const state = useStore.getState();
-  const existingHashes = new Set(state.entries.filter((e) => e.importHash).map((e) => e.importHash as string));
+  const seenHashes = new Set(existingEntries.filter((e) => e.importHash).map((e) => e.importHash as string));
 
   for (const row of rows) {
     if (row.category === "Payment") {
-      result.skipped.payment++;
+      plan.skipped.payment++;
       continue;
     }
     if (row.currency !== "EUR") {
-      result.skipped.nonEur++;
+      plan.skipped.nonEur++;
       continue;
     }
     const yourShareStr = row.shares[opts.userColumn];
     if (yourShareStr === undefined) {
-      result.skipped.other++;
+      plan.skipped.other++;
       continue;
     }
     const yourShare = Number.parseFloat(yourShareStr);
     if (!Number.isFinite(yourShare) || Math.abs(yourShare) < 0.005) {
-      result.skipped.zero++;
+      plan.skipped.zero++;
       continue;
     }
     // Splitwise share semantics:
@@ -164,17 +167,17 @@ export function importSplitwiseRows(rows: SplitwiseRow[], opts: ImportOptions): 
     //   positive = others owe you (you fronted cash, reimbursement coming) → skip
     // Skipping positives avoids double-counting bills already in your card statement.
     if (yourShare > 0) {
-      result.skipped.paidForOthers++;
-      result.paidForOthersCents += decimalToCents(yourShare);
+      plan.skipped.paidForOthers++;
+      plan.paidForOthersCents += decimalToCents(yourShare);
       continue;
     }
     const hash = rowHash(row, opts.userColumn);
-    if (existingHashes.has(hash)) {
-      result.skipped.duplicate++;
+    if (seenHashes.has(hash)) {
+      plan.skipped.duplicate++;
       continue;
     }
 
-    const created = state.addEntry({
+    plan.entries.push({
       date: row.date,
       amount: decimalToCents(yourShare),
       categoryId: mapSplitwiseCategory(row.category),
@@ -184,12 +187,20 @@ export function importSplitwiseRows(rows: SplitwiseRow[], opts: ImportOptions): 
       chapterId: "current",
       importHash: hash,
     });
-    result.imported.push(created);
-    existingHashes.add(hash);
+    seenHashes.add(hash);
   }
 
-  return result;
+  return plan;
 }
 
-// helper kept for potential future async hashing; not used now
-export { sha256Hex };
+export interface ImportResult {
+  imported: Entry[];
+  skipped: ImportPlan["skipped"];
+  paidForOthersCents: number;
+}
+
+/** Apply an ImportPlan via the store's addEntry. The only impure bit. */
+export function commitImportPlan(plan: ImportPlan, addEntry: (e: Omit<Entry, "id">) => Entry): ImportResult {
+  const imported = plan.entries.map((e) => addEntry(e));
+  return { imported, skipped: plan.skipped, paidForOthersCents: plan.paidForOthersCents };
+}

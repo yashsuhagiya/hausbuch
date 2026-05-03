@@ -1,13 +1,20 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import { formatEUR } from "@/lib/money";
-import { importSplitwiseRows, type ParsedSplitwise, parseSplitwiseCSV } from "@/lib/splitwise-import";
+import {
+  commitImportPlan,
+  type ParsedSplitwise,
+  parseSplitwiseCSV,
+  planSplitwiseImport,
+} from "@/lib/splitwise-import";
 import { useStore } from "@/lib/store";
 
 export function DataSection() {
   const [msg, setMsg] = useState<string | null>(null);
   const splitwiseRef = useRef<HTMLInputElement>(null);
   const accounts = useStore((s) => s.accounts);
+  const entries = useStore((s) => s.entries);
+  const addEntry = useStore((s) => s.addEntry);
 
   const liveAccounts = useMemo(() => accounts.filter((a) => !a.archived), [accounts]);
 
@@ -38,7 +45,8 @@ export function DataSection() {
 
   function runSplitwiseImport() {
     if (!parsed || !userColumn || !accountId) return;
-    const result = importSplitwiseRows(parsed.rows, { userColumn, accountId });
+    const plan = planSplitwiseImport(parsed.rows, { userColumn, accountId }, entries);
+    const result = commitImportPlan(plan, addEntry);
     const s = result.skipped;
     const lent =
       s.paidForOthers > 0

@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { importSplitwiseRows, parseSplitwiseCSV, type SplitwiseRow } from "@/lib/splitwise-import";
+import {
+  commitImportPlan,
+  parseSplitwiseCSV,
+  planSplitwiseImport,
+  type SplitwiseRow,
+} from "@/lib/splitwise-import";
 import { useStore } from "@/lib/store";
+import type { Entry } from "@/lib/types";
 
 const fixture = `Date,Description,Category,Cost,Currency,Alice,Yash Suhagiya,Bob
 
@@ -14,11 +20,7 @@ const fixture = `Date,Description,Category,Cost,Currency,Alice,Yash Suhagiya,Bob
 2024-06-30,Total balance, , ,EUR,0.00,0.00,0.00
 `;
 
-beforeEach(async () => {
-  localStorage.clear();
-  useStore.getState().reset();
-  await useStore.getState().hydrate();
-});
+const opts = { userColumn: "Yash Suhagiya", accountId: "acc-giro" };
 
 describe("parseSplitwiseCSV", () => {
   it("parses members from header", () => {
@@ -28,7 +30,6 @@ describe("parseSplitwiseCSV", () => {
 
   it("returns rows with split data", () => {
     const result = parseSplitwiseCSV(fixture);
-    // 6 data rows minus the Total balance footer = 6 rows kept (skip applies later, not in parse)
     expect(result.rows.length).toBeGreaterThanOrEqual(5);
     const aldi = result.rows.find((r) => r.description === "Aldi");
     expect(aldi).toBeTruthy();
@@ -48,52 +49,51 @@ describe("parseSplitwiseCSV", () => {
   });
 });
 
-describe("importSplitwiseRows — filter rules", () => {
+describe("planSplitwiseImport — filter rules", () => {
   it("skips rows where user's column is zero", () => {
     const { rows } = parseSplitwiseCSV(fixture);
-    const result = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    // "Solo entry" (yash=0.00) should be skipped
-    expect(result.imported.find((e) => e.note === "Solo entry")).toBeUndefined();
-    expect(result.skipped.zero).toBeGreaterThanOrEqual(1);
+    const plan = planSplitwiseImport(rows, opts, []);
+    expect(plan.entries.find((e) => e.note === "Solo entry")).toBeUndefined();
+    expect(plan.skipped.zero).toBeGreaterThanOrEqual(1);
   });
 
   it("skips Payment-category rows", () => {
     const { rows } = parseSplitwiseCSV(fixture);
-    const result = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    expect(result.imported.find((e) => e.note?.includes("paid"))).toBeUndefined();
-    expect(result.skipped.payment).toBeGreaterThanOrEqual(1);
+    const plan = planSplitwiseImport(rows, opts, []);
+    expect(plan.entries.find((e) => e.note?.includes("paid"))).toBeUndefined();
+    expect(plan.skipped.payment).toBeGreaterThanOrEqual(1);
   });
 
   it("skips non-EUR rows", () => {
     const { rows } = parseSplitwiseCSV(fixture);
-    const result = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    expect(result.imported.find((e) => e.note === "Hotel")).toBeUndefined();
-    expect(result.skipped.nonEur).toBeGreaterThanOrEqual(1);
+    const plan = planSplitwiseImport(rows, opts, []);
+    expect(plan.entries.find((e) => e.note === "Hotel")).toBeUndefined();
+    expect(plan.skipped.nonEur).toBeGreaterThanOrEqual(1);
   });
 });
 
-describe("importSplitwiseRows — sign", () => {
+describe("planSplitwiseImport — sign", () => {
   it("negative user-column → negative entry amount (expense)", () => {
     const { rows } = parseSplitwiseCSV(fixture);
-    const result = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    const aldi = result.imported.find((e) => e.note === "Aldi");
+    const plan = planSplitwiseImport(rows, opts, []);
+    const aldi = plan.entries.find((e) => e.note === "Aldi");
     expect(aldi).toBeTruthy();
     expect(aldi?.amount).toBe(-980); // -9.80 EUR in cents
   });
 
   it("positive user-column rows are skipped as paid-for-others (not imported as income)", () => {
     const { rows } = parseSplitwiseCSV(fixture);
-    const result = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    expect(result.imported.find((e) => e.note === "Norma")).toBeUndefined();
-    expect(result.skipped.paidForOthers).toBeGreaterThanOrEqual(1);
+    const plan = planSplitwiseImport(rows, opts, []);
+    expect(plan.entries.find((e) => e.note === "Norma")).toBeUndefined();
+    expect(plan.skipped.paidForOthers).toBeGreaterThanOrEqual(1);
   });
 });
 
-describe("importSplitwiseRows — category mapping", () => {
+describe("planSplitwiseImport — category mapping", () => {
   it("maps Groceries → cat-groceries", () => {
     const { rows } = parseSplitwiseCSV(fixture);
-    const result = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    const aldi = result.imported.find((e) => e.note === "Aldi");
+    const plan = planSplitwiseImport(rows, opts, []);
+    const aldi = plan.entries.find((e) => e.note === "Aldi");
     expect(aldi?.categoryId).toBe("cat-groceries");
   });
 
@@ -108,17 +108,38 @@ describe("importSplitwiseRows — category mapping", () => {
         shares: { "Yash Suhagiya": "-5.00" },
       },
     ];
-    const result = importSplitwiseRows(customRows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    expect(result.imported[0].categoryId).toBe("cat-other");
+    const plan = planSplitwiseImport(customRows, opts, []);
+    expect(plan.entries[0].categoryId).toBe("cat-other");
   });
 });
 
-describe("importSplitwiseRows — idempotency", () => {
-  it("re-importing same rows does not duplicate", () => {
+describe("planSplitwiseImport — idempotency against existing entries", () => {
+  it("re-planning against entries that already include the same hashes skips duplicates", () => {
     const { rows } = parseSplitwiseCSV(fixture);
-    const first = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    const second = importSplitwiseRows(rows, { userColumn: "Yash Suhagiya", accountId: "acc-giro" });
-    expect(second.imported.length).toBe(0);
-    expect(second.skipped.duplicate).toBe(first.imported.length);
+    const first = planSplitwiseImport(rows, opts, []);
+
+    // Simulate the first plan being committed: build pseudo-entries with the
+    // same importHash values the next plan will compute.
+    const existing: Entry[] = first.entries.map((e, i) => ({ ...e, id: `existing-${i}` }));
+
+    const second = planSplitwiseImport(rows, opts, existing);
+    expect(second.entries.length).toBe(0);
+    expect(second.skipped.duplicate).toBe(first.entries.length);
+  });
+});
+
+describe("commitImportPlan — store integration", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    useStore.getState().reset();
+    await useStore.getState().hydrate();
+  });
+
+  it("calls addEntry once per planned entry and returns the ids it created", () => {
+    const { rows } = parseSplitwiseCSV(fixture);
+    const plan = planSplitwiseImport(rows, opts, []);
+    const result = commitImportPlan(plan, useStore.getState().addEntry);
+    expect(result.imported.length).toBe(plan.entries.length);
+    expect(result.imported.every((e) => typeof e.id === "string" && e.id.length > 0)).toBe(true);
   });
 });
