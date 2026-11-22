@@ -10,7 +10,7 @@ import { prisma } from "@/lib/db";
 const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
 // Resolve the canonical baseURL with Vercel-aware fallbacks so deployments
-// don't 403 sign-up requests when an admin forgets to set BETTER_AUTH_URL.
+// don't 403 auth requests when an admin forgets to set BETTER_AUTH_URL.
 // Better Auth compares the request Origin header against this value; mismatch
 // → 403 with no useful body, which is what bit us in production.
 //   - BETTER_AUTH_URL: explicit override, used for both local dev and prod.
@@ -42,7 +42,8 @@ export const auth = betterAuth({
   baseURL,
   trustedOrigins,
   secret: process.env.BETTER_AUTH_SECRET,
-  emailAndPassword: { enabled: true },
+  // Single-user app: the owner's account already exists, so new accounts are refused server-side.
+  emailAndPassword: { enabled: true, disableSignUp: true },
   session: {
     expiresIn: 60 * 60 * 24 * 365,
     updateAge: 60 * 60 * 24,
@@ -54,6 +55,7 @@ export const auth = betterAuth({
           clientId: process.env.GOOGLE_CLIENT_ID!,
           // biome-ignore lint/style/noNonNullAssertion: googleConfigured guards both
           clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+          disableSignUp: true,
         },
       }
     : {},
