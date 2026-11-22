@@ -2,6 +2,12 @@
 
 A personal expense tracker that reads like a typeset monthly journal. The month is the dashboard.
 
+![The month page: totals, the flow of the month, and the entries](.github/screenshots/month.png)
+
+![New entry: the amount field takes math and adds it up as you type](.github/screenshots/entry.png)
+
+The live app is single-user (sign-up is closed), so the screenshots use made-up data.
+
 ## Develop
 
 ```bash
@@ -56,10 +62,9 @@ The production target is Vercel + Vercel Postgres + the subdomain `hausbuch.yash
 4. **Run the schema migration** against the prod DB on first deploy: `pnpm prisma migrate deploy` (Vercel can run this in the build step via a `postinstall` hook, or run once manually with the prod `DATABASE_URL`).
 5. **Update Google OAuth redirect URIs** (if used) to include `https://hausbuch.yashsuhagiya.com/api/auth/callback/google`.
 
-## Spec and plan
+## Design spec
 
 - [docs/superpowers/specs/2026-04-30-hausbuch-expense-tracker-design.md](docs/superpowers/specs/2026-04-30-hausbuch-expense-tracker-design.md)
-- [docs/superpowers/plans/2026-04-30-hausbuch-v1.md](docs/superpowers/plans/2026-04-30-hausbuch-v1.md)
 
 ## Known v1 limitations
 

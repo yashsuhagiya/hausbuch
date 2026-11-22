@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-30
 **Status:** v1 (MVP) design, ready for plan
-**Author:** Yash + Claude (brainstorm session 174513-1777567763)
+**Author:** Yash Suhagiya
 
 ## Premise
 
