@@ -45,7 +45,7 @@ export function MonthPageShell({ month }: { month: ISOMonth }) {
   const close = () => setOpen(false);
 
   return (
-    <main className="max-w-[1320px] mx-auto px-4 md:px-8 py-8 md:py-12">
+    <main className="max-w-[1320px] mx-auto px-4 md:px-8 pt-8 pb-28 md:py-12">
       <PageHead month={month} />
       <StatsStrip month={month} />
       <FlowChart month={month} />
@@ -56,7 +56,7 @@ export function MonthPageShell({ month }: { month: ISOMonth }) {
         href="/settings"
         title="Settings"
         aria-label="Settings"
-        className="fixed bottom-24 right-8 w-10 h-10 bg-paper border border-ink text-ink font-mono text-[0.6rem] uppercase tracking-widest flex items-center justify-center shadow hover:bg-ink hover:text-paper transition-colors"
+        className="fixed bottom-[1.375rem] right-[4.5rem] md:bottom-24 md:right-8 w-10 h-10 bg-paper border border-ink text-ink font-mono text-[0.6rem] uppercase tracking-widest flex items-center justify-center shadow hover:bg-ink hover:text-paper transition-colors"
       >
         SET
       </Link>

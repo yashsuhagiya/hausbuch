@@ -30,7 +30,7 @@ export function PageHead({ month }: { month: ISOMonth }) {
   const balance = entries.reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <header className="grid grid-cols-[auto_1fr_auto] items-end gap-3 md:gap-8 pb-4 border-b border-ink mb-8">
+    <header className="grid grid-cols-[auto_1fr_auto] items-center md:items-end gap-3 md:gap-8 pb-4 border-b border-ink mb-8">
       <Link
         href={`/m/${prevMonth(month)}`}
         className="font-mono text-xs uppercase tracking-widest text-sage hover:text-ink whitespace-nowrap"
@@ -49,6 +49,7 @@ export function PageHead({ month }: { month: ISOMonth }) {
           ↑ Hausbuch
         </Link>
         <h1 className="font-display text-3xl md:text-5xl tracking-tight">{readableMonth(month)}</h1>
+        <div className="md:hidden font-display text-base tnum mt-1 whitespace-nowrap">{formatEUR(balance)}</div>
       </div>
       <div className="text-right">
         <Link
@@ -59,7 +60,7 @@ export function PageHead({ month }: { month: ISOMonth }) {
           <span className="md:hidden">→</span>
           <span className="hidden md:inline">{readableMonth(nextMonth(month))} →</span>
         </Link>
-        <div className="font-display text-base md:text-2xl tnum mt-1 whitespace-nowrap">{formatEUR(balance)}</div>
+        <div className="hidden md:block font-display text-2xl tnum mt-1 whitespace-nowrap">{formatEUR(balance)}</div>
       </div>
     </header>
   );

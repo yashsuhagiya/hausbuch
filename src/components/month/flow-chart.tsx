@@ -36,7 +36,7 @@ export function FlowChart({ month }: { month: ISOMonth }) {
 
   return (
     <section className="mt-9">
-      <header className="flex justify-between items-baseline mb-3">
+      <header className="flex flex-col gap-1 md:flex-row md:justify-between md:items-baseline mb-3">
         <span className="font-mono text-[0.65rem] tracking-widest uppercase text-sage">The flow of the month</span>
         <span className="text-xs text-sage">income above the line · expenses below</span>
       </header>
